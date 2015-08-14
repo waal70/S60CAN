@@ -21,6 +21,10 @@
 **
 */
 
+//TODO:
+// * Move all USBCAN-related functionality to USBCAN.CPP
+// * Currently ifdefs are being misused. Clean up
+
 //#define DEBUG_MAIN
 //#define DEBUG_FREE_MEM
 // This enables the logging of the messages to an attached SD-card
@@ -36,7 +40,7 @@
 
 #include <TimerOne.h>
 #include <Wire.h>
-#include <EEPROM.h>
+//#include <EEPROM.h> //probably not needed
 #include <Canbus.h>
 #include <defaults.h>
 #include <global.h>
@@ -91,13 +95,15 @@ char foo;  // for the sake of Arduino header parsing anti-automagic. Remove and 
 // In effect, dispatching received messages to the USB
 #define USBCAN    // we are using CANUSB (Lawicel) / CAN232 format by default now
 
-  tCAN keepalive_msg;  // hard coded keepalive message
-  unsigned long last_keepalive_msg;
-  unsigned long keepalive_timeout; // timeout in 1/10 seconds. 0=keepalive messaging disabled
-  
-  tCAN keepalive_msg2;  // hard coded keepalive message
-  unsigned long last_keepalive_msg2;
-  unsigned long keepalive_timeout2; // timeout in 1/10 seconds. 0=keepalive messaging disabled
+  #ifdef KEEPALIVE
+    tCAN keepalive_msg;  // hard coded keepalive message
+    unsigned long last_keepalive_msg;
+    unsigned long keepalive_timeout; // timeout in 1/10 seconds. 0=keepalive messaging disabled
+    
+    tCAN keepalive_msg2;  // hard coded keepalive message
+    unsigned long last_keepalive_msg2;
+    unsigned long keepalive_timeout2; // timeout in 1/10 seconds. 0=keepalive messaging disabled
+  #endif
 
   #ifdef DPFMONITOR
     tCAN monitormsg; //hard coded dpf temp monitor message
@@ -134,8 +140,6 @@ unsigned int get_operation_mode() {
   // CNF1: 0x00: 500kbps
   // CNF1: 0x41: 250kbps
   // CNF1: 0x03: 125kbps
-  //uint8_t canstat = mcp2515_read_register(CANSTAT);
-  //unsigned int mode = (canstat>>OPMOD0) & 0x7;
   #ifdef LCD
     lcd.setCursor(14,0);
     switch(mode)
@@ -177,7 +181,6 @@ unsigned int get_operation_mode() {
           lcd.print(F("???"));
           break;
       }
-    //TODO check filter mode set
     //WARNING: this only works if we are setting filter mode to either
     // 11 or 00. This will incorrectly interpret intermediate settings!
     uint8_t fltr = mcp2515_read_register(RXB0CTRL);
@@ -192,8 +195,7 @@ unsigned int get_operation_mode() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 int switch_mode(unsigned int mode) {
-  //Andre try:
-  //printf("mode %i", mode);
+
   #ifdef LCD
     lcd.clear();
   #endif 
@@ -296,6 +298,23 @@ void write_CAN_reg(unsigned char ucAddress, unsigned char ucData) {
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void write_DPF_msg_on_LCD (tCAN *message) {
+  char msg[32];
+  char data[8];
+  unsigned long temp;
+  lcd.clear();
+  lcd.setCursor(0,0);
+
+  temp = ((message->data[5]) << 8) | (message->data[6]); //temp in degrees Kelvin
+  temp = (temp - 2731.5)/10;
+
+  sprintf("DPF temp: , %ul degC", temp);
+  
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#ifdef LCD
 void show_CAN_msg_on_LCD( tCAN * message, bool recv )
 {
       char msg[32];
@@ -327,7 +346,7 @@ void show_CAN_msg_on_LCD( tCAN * message, bool recv )
         lcd.print(data);
         }
 }
-
+#endif
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #ifdef DATALOGGER
@@ -367,7 +386,10 @@ void write_CAN_msg_to_file( tCAN * message, bool recv )
 
 int send_CAN_msg(tCAN * msg)  {   
   #ifdef LCD
-    //show_CAN_msg_on_LCD(msg, false);
+    //disable this for monitoring mode
+    #ifndef DPFMONITOR
+      show_CAN_msg_on_LCD(msg, false);
+    #endif
   #endif
   
   #ifdef DATALOGGER
@@ -386,10 +408,12 @@ int send_CAN_msg(tCAN * msg)  {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+#ifdef KEEPALIVE
 void set_keepalive_timeout( unsigned long timeout )
 {
  keepalive_timeout = timeout;
 }
+#endif KEEPALIVE
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -663,7 +687,7 @@ void setup() {
     keepalive_msg2.data[5] = 0x40;
   #endif //KEEPALIVE
 
-  #ifdef DPFMONITORING
+  #ifdef DPFMONITOR
   // initialize the dpf monitoring message
     last_monitor_msg=millis();
     monitormsg.header.rtr = 0;
@@ -695,12 +719,16 @@ void setup() {
     printf(freemem);
   #endif
 
+#ifdef KEEPALIVE
  // set keepalive timeout to 0 if you do not require timeouts.
  // works in 1/10 seconds
   keepalive_timeout = 0;
   keepalive_timeout2 = 0;
+#endif KEEPALIVE
 
+#ifdef DPFMONITOR
   last_monitor_frequency = 10; //every second
+#endif DPFMONITOR
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -714,6 +742,17 @@ int is_in_normal_mode()
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// 1 = succes, 0 = fail
+int isDPFMessage(tCAN * message) {
+
+  // Ignore canid. Different cars may send different diagnostic id's
+  // DPF-return message contains: CE 11 E6 01 96 xx yy 00. E6 01 96 are relevant
+  return ((message->data[2] == 0xE6) && (message->data[3] == 0x01) && (message->data[4] == 0x96));
+
+}
+ 
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void handle_CAN_rx() {
   
@@ -724,8 +763,14 @@ void handle_CAN_rx() {
       if (status)  
         {
           #ifdef LCD
-  //          show_CAN_msg_on_LCD(&message,true);
+            #ifndef DPFMONITOR
+              show_CAN_msg_on_LCD(&message,true);
+            #endif
           #endif
+          if (isDPFMessage(&message))
+          {
+            write_DPF_msg_on_LCD(&message);
+          }
           #ifdef DATALOGGER
             write_CAN_msg_to_file(&message, true);
             // check if RX buffer overflow has occured since last receive
@@ -814,7 +859,7 @@ void loop() {
         }
   #endif
 
-  #ifdef DPFMONITORING
+  #ifdef DPFMONITOR
     if (last_monitor_frequency>0)
       if (millis()-last_monitor_msg > last_monitor_frequency *100)
         {
