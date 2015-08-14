@@ -24,10 +24,15 @@
 //#define DEBUG_MAIN
 //#define DEBUG_FREE_MEM
 // This enables the logging of the messages to an attached SD-card
-#define DATALOGGER
+//#define DATALOGGER
+
 // This enables the sending of periodic keep-alive messages
 // Also pretty useful for loopback testing
 //#define KEEPALIVE
+
+// This enables using the apparatus as an indepent DPF temp monitor 
+//  the original goal for making this :)
+#define DPFMONITOR
 
 #include <TimerOne.h>
 #include <Wire.h>
@@ -48,7 +53,7 @@
   File dataFile;
   const int chipSelect = 9; //The CARD_SC pin on the sparkfun board
   String timeStamp;
-#endif
+#endif //DATALOGGER
 
 #include "usbcan.h"
 
@@ -59,6 +64,7 @@ char foo;  // for the sake of Arduino header parsing anti-automagic. Remove and 
 #define SW_VER_MAJOR  0x05    // software major version
 #define SW_VER_MINOR  0x01    // software minor version
 #define MCP2551_STANDBY_PIN A1
+
 // ONE_SHOT_MODE tries to send message only once even if error occurs during transmit.  (see MCP2515 data sheet)
 // If we are testing the Sardine CAN without any other CAN device on the network, then there will be no ACK signals acknowledging that
 // transmit succeeded and thus sending fails. If this happens, MCP2515 will keep on sending the message forever and transmit buffers will eventually
@@ -92,6 +98,12 @@ char foo;  // for the sake of Arduino header parsing anti-automagic. Remove and 
   tCAN keepalive_msg2;  // hard coded keepalive message
   unsigned long last_keepalive_msg2;
   unsigned long keepalive_timeout2; // timeout in 1/10 seconds. 0=keepalive messaging disabled
+
+  #ifdef DPFMONITOR
+    tCAN monitormsg; //hard coded dpf temp monitor message
+    unsigned long last_monitor_msg;
+    unsigned long last_monitor_frequency; //frequency in 1/10 seconds. 0=diagnostich messaging disabled
+  #endif
     
   char msgFromHost[32]; // message that is being read from host
   int msgLen=0;
@@ -109,6 +121,116 @@ static int uart_putchar (char c, FILE *stream)
     return 0 ;
   }
 // =====================END STANDARD BLOCK TO ENABLE printf
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+unsigned int get_operation_mode() {
+
+  uint8_t mode = mcp2515_read_register(CANCTRL);
+  uint8_t kbps = mcp2515_read_register(CNF1);
+  //for a positive ID on speed, read CNF1 and CNF2
+  // but as we limit the speeds to 125, 250 and 500,
+  // what suffices is:
+  // CNF1: 0x00: 500kbps
+  // CNF1: 0x41: 250kbps
+  // CNF1: 0x03: 125kbps
+  //uint8_t canstat = mcp2515_read_register(CANSTAT);
+  //unsigned int mode = (canstat>>OPMOD0) & 0x7;
+  #ifdef LCD
+    lcd.setCursor(14,0);
+    switch(mode)
+    {
+      case MODE_NORMAL:
+        lcd.print(F("NO"));
+        break;
+      case MODE_SLEEP:
+        lcd.print(F("SL"));
+        break;
+      case MODE_CONFIG:
+        lcd.print(F("CF"));
+        break;
+      case MODE_LISTENONLY:
+        lcd.print(F("LI"));
+        break;
+      case MODE_LOOPBACK:
+        lcd.print(F("LP"));
+        break;
+      default:
+        lcd.print(F("ER"));
+        break;
+    }
+    // now write the speed status line:
+    lcd.setCursor (0,1);
+    lcd.print(F("kbps: "));
+    switch (kbps)
+      {
+        case MCP_16MHz_125kBPS_CFG1:
+          lcd.print(F("125"));
+          break;
+        case MCP_16MHz_250kBPS_CFG1:
+          lcd.print(F("250"));
+          break;
+        case MCP_16MHz_500kBPS_CFG1:
+          lcd.print(F("500"));
+          break;
+        default:
+          lcd.print(F("???"));
+          break;
+      }
+    //TODO check filter mode set
+    //WARNING: this only works if we are setting filter mode to either
+    // 11 or 00. This will incorrectly interpret intermediate settings!
+    uint8_t fltr = mcp2515_read_register(RXB0CTRL);
+    if (!((fltr & 0x60) == 0x60))
+      lcd.print("*");
+        //one of the two bits is zero. Because of the above
+        // assumption, both bits are zero. Therefore, filter is set.
+  #endif
+  return mode;
+}
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+int switch_mode(unsigned int mode) {
+  //Andre try:
+  //printf("mode %i", mode);
+  #ifdef LCD
+    lcd.clear();
+  #endif 
+  mcp2515_setCANCTRL_Mode((uint8_t)mode);
+  uint8_t ret_mode = mcp2515_read_register(CANCTRL);
+  
+  get_operation_mode();  
+  
+  #ifdef LCD
+    lcd.setCursor(0,0);
+    lcd.print(F("mode: "));
+  
+    switch (ret_mode)
+      {
+        case MODE_NORMAL:
+          lcd.print(F("normal"));
+          break;
+        case MODE_SLEEP:
+          lcd.print(F("sleep"));
+          break;
+        case MODE_CONFIG:
+          lcd.print(F("config"));
+          break;
+        case MODE_LISTENONLY:
+          lcd.print(F("listen"));
+          break;
+        case MODE_LOOPBACK:
+          lcd.print(F("loopback"));
+          break;
+        default:
+          lcd.print(F("error!"));
+          return 0;
+        break;
+      }
+  #endif
+  return (ret_mode == mode);
+}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -239,7 +361,7 @@ void write_CAN_msg_to_file( tCAN * message, bool recv )
         dataFile.close();
       }
 }
-#endif
+#endif //DATALOGGER
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -247,6 +369,7 @@ int send_CAN_msg(tCAN * msg)  {
   #ifdef LCD
     //show_CAN_msg_on_LCD(msg, false);
   #endif
+  
   #ifdef DATALOGGER
     write_CAN_msg_to_file(msg, false);
   #endif
@@ -325,7 +448,7 @@ int init_module( unsigned long baudrate )
         #ifdef LCD
           lcd.print(F("unsup"));
         #endif
-        return 0;      
+        return 0;
     }
  
   if(!Canbus.init(mcp2515_speed))
@@ -368,7 +491,6 @@ int init_module( unsigned long baudrate )
 uint8_t read_status()
 {
   uint8_t mcp2515_eflg = mcp2515_read_register(EFLG);  
-
   uint8_t mcp2515_st = mcp2515_read_status(SPI_READ_STATUS);
 
   // SPI_READ_STATUS:
@@ -474,6 +596,7 @@ void setFilter()
 
 }
 
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void setup() { 
@@ -538,6 +661,23 @@ void setup() {
       keepalive_msg2.data[i] = 0x00;  
     keepalive_msg2.data[4] = 0x1f;
     keepalive_msg2.data[5] = 0x40;
+  #endif //KEEPALIVE
+
+  #ifdef DPFMONITORING
+  // initialize the dpf monitoring message
+    last_monitor_msg=millis();
+    monitormsg.header.rtr = 0;
+    monitormsg.header.eid = 1;
+    monitormsg.header.length = 8;
+    monitormsg.id = 0x000ffffe; //default diagnostic id
+    monitormsg.data[0] = 0xCD;  
+    monitormsg.data[1] = 0x11;
+    monitormsg.data[2] = 0xA6;
+    monitormsg.data[3] = 0x01;
+    monitormsg.data[4] = 0x96;
+    monitormsg.data[5] = 0x01;
+    monitormsg.data[6] = 0x00;
+    monitormsg.data[7] = 0x00;
   #endif
 
   //set the filters for the messages
@@ -559,117 +699,12 @@ void setup() {
  // works in 1/10 seconds
   keepalive_timeout = 0;
   keepalive_timeout2 = 0;
+
+  last_monitor_frequency = 10; //every second
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-int switch_mode(unsigned int mode) {
-  //Andre try:
-  //printf("mode %i", mode);
-  #ifdef LCD
-    lcd.clear();
-  #endif 
-  mcp2515_setCANCTRL_Mode((uint8_t)mode);
-  uint8_t ret_mode = mcp2515_read_register(CANCTRL);
-  
-  get_operation_mode();  
-  
-  #ifdef LCD
-    lcd.setCursor(0,0);
-    lcd.print(F("mode: "));
-  
-    switch (ret_mode)
-      {
-        case MODE_NORMAL:
-          lcd.print(F("normal"));
-          break;
-        case MODE_SLEEP:
-          lcd.print(F("sleep"));
-          break;
-        case MODE_CONFIG:
-          lcd.print(F("config"));
-          break;
-        case MODE_LISTENONLY:
-          lcd.print(F("listen"));
-          break;
-        case MODE_LOOPBACK:
-          lcd.print(F("loopback"));
-          break;
-        default:
-          lcd.print(F("error!"));
-          return 0;
-        break;
-      }
-  #endif
-  return (ret_mode == mode);
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-unsigned int get_operation_mode() {
-
-  uint8_t mode = mcp2515_read_register(CANCTRL);
-  uint8_t kbps = mcp2515_read_register(CNF1);
-  //for a positive ID on speed, read CNF1 and CNF2
-  // but as we limit the speeds to 125, 250 and 500,
-  // what suffices is:
-  // CNF1: 0x00: 500kbps
-  // CNF1: 0x41: 250kbps
-  // CNF1: 0x03: 125kbps
-  //uint8_t canstat = mcp2515_read_register(CANSTAT);
-  //unsigned int mode = (canstat>>OPMOD0) & 0x7;
-  #ifdef LCD
-    lcd.setCursor(14,0);
-    switch(mode)
-    {
-      case MODE_NORMAL:
-        lcd.print(F("NO"));
-        break;
-      case MODE_SLEEP:
-        lcd.print(F("SL"));
-        break;
-      case MODE_CONFIG:
-        lcd.print(F("CF"));
-        break;
-      case MODE_LISTENONLY:
-        lcd.print(F("LI"));
-        break;
-      case MODE_LOOPBACK:
-        lcd.print(F("LP"));
-        break;
-      default:
-        lcd.print(F("ER"));
-        break;
-    }
-    // now write the speed status line:
-    lcd.setCursor (0,1);
-    lcd.print(F("kbps: "));
-    switch (kbps)
-      {
-        case MCP_16MHz_125kBPS_CFG1:
-          lcd.print(F("125"));
-          break;
-        case MCP_16MHz_250kBPS_CFG1:
-          lcd.print(F("250"));
-          break;
-        case MCP_16MHz_500kBPS_CFG1:
-          lcd.print(F("500"));
-          break;
-        default:
-          lcd.print(F("???"));
-          break;
-      }
-    //TODO check filter mode set
-    //WARNING: this only works if we are setting filter mode to either
-    // 11 or 00. This will incorrectly interpret intermediate settings!
-    uint8_t fltr = mcp2515_read_register(RXB0CTRL);
-    if (!((fltr & 0x60) == 0x60))
-      lcd.print("*");
-        //one of the two bits is zero. Because of the above
-        // assumption, both bits are zero. Therefore, filter is set.
-  #endif
-  return mode;
-}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -776,6 +811,15 @@ void loop() {
         {
           send_CAN_msg(&keepalive_msg2);
           last_keepalive_msg2 = millis();
+        }
+  #endif
+
+  #ifdef DPFMONITORING
+    if (last_monitor_frequency>0)
+      if (millis()-last_monitor_msg > last_monitor_frequency *100)
+        {
+          send_CAN_msg(&monitormsg);
+          last_monitor_msg = millis();
         }
   #endif
       
