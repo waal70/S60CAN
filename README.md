@@ -9,6 +9,8 @@ The reason I started this version is because of the DPF (soot filter) and regene
 
 The changes in this version are specific for later years Volvo and include:
 
+* Using the SD card reader/writer on the SKPANG board to log messages
+* Using a connected LCD screen to display status messages (Funduino 16x2 LCD)
 * Using hardware filtering capabilities of MCP2515 (it's a must with a lot going on)
 * Connect to LS and HS CAN 
 * Easier mode-switching (for loopback, listenonly and normal mode)
