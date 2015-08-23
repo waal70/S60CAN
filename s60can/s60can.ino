@@ -306,10 +306,11 @@ void write_DPF_msg_on_LCD (tCAN *message) {
   lcd.clear();
   lcd.setCursor(0,0);
 
-  temp = ((message->data[5]) << 8) | (message->data[6]); //temp in degrees Kelvin
-  temp = (temp - 2731.5)/10;
+// TODO: This should be fixed...
+//  temp = ((message->data[5]) << 8) | (message->data[6]); //temp in degrees Kelvin
+//  temp = (temp - 2731.5)/10;
 
-  sprintf("DPF temp: , %ul degC", temp);
+//  sprintf("DPF temp: , %ul degC", temp);
   
 }
 
@@ -632,6 +633,8 @@ void setup() {
   // The uart is the standard output device STDOUT.
   stdout = &uartout ;
 
+  printf("setup()");
+
   #ifdef LCD
     lcd.begin(16, 2);
     lcd.print(F("S60 logger CAN"));
@@ -649,10 +652,13 @@ void setup() {
   #endif
 
   // we have to initialize the CAN module anyway, otherwise SPI commands (read registers/status/get_operation_mode etc) hang during invocation
-  init_module(500000);
+  if (!init_module(500000))
+    printf("NOK");
   // set MCP2551 to normal mode
   pinMode(MCP2551_STANDBY_PIN,OUTPUT);
+  printf("MCP2551 stb OK");
   digitalWrite(MCP2551_STANDBY_PIN,LOW);
+  printf("MCP2551 OK");
   
   #ifdef USBCAN
     UsbCAN::init_protocol();
@@ -729,6 +735,8 @@ void setup() {
 #ifdef DPFMONITOR
   last_monitor_frequency = 10; //every second
 #endif DPFMONITOR
+
+printf("Setup OK");
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
