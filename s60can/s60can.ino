@@ -622,10 +622,10 @@ void setFilter()
 // 03C01428: ?
 // 01E0162A: ?
   
-  //uint32_t masks[1] = {0xffffffff};
-  //uint32_t filters[2] = {0x000FFFFE, 0x01200021};
+  uint32_t masks[1] = {0xffffffff};
+  uint32_t filters[2] = {0x000FFFFE, 0x01200021};
   
-  //mcp2515_setHWFilter(masks,1, filters, 2);
+  mcp2515_setHWFilter(masks,1, filters, 2);
 
 
 }
@@ -712,10 +712,10 @@ void setup() {
     monitormsg.data[3] = 0x01;
     monitormsg.data[4] = 0x96;
     //for loopback testing:
-    monitormsg.data[5] = 0x0B;
-    monitormsg.data[6] = 0xD4; //temp of 29.6
-    //monitormsg.data[5] = 0x01;
-    //monitormsg.data[6] = 0x00;
+    //monitormsg.data[5] = 0x0B;
+    //monitormsg.data[6] = 0xD4; //temp of 29.6
+    monitormsg.data[5] = 0x01;
+    monitormsg.data[6] = 0x00;
     monitormsg.data[7] = 0x00;
   #endif
 
@@ -726,7 +726,7 @@ void setup() {
   delay(10);
 
   //This sets DEFAULT mode:
-  switch_mode(MODE_LOOPBACK);
+  switch_mode(MODE_NORMAL);
 
   #ifdef DEBUG_FREE_MEM
     unsigned int freemem = freeRam();
