@@ -1,3 +1,4 @@
+
 /* S60 CAN  - Arduino firmware - version 0.5 alpha
 **
 ** Copyright (c) 2015 André de Waal
@@ -28,6 +29,8 @@
 //#define DEBUG_MAIN
 //#define DEBUG_FREE_MEM
 // This enables the logging of the messages to an attached SD-card
+// Warning, although this is for SD-logging, without this define
+// still Serial initialization takes place. TODO: fix
 //#define DATALOGGER
 
 // This enables the sending of periodic keep-alive messages
@@ -36,28 +39,26 @@
 
 // This enables using the apparatus as an indepent DPF temp monitor 
 //  the original goal for making this :)
-#define DPFMONITOR
+//#define DPFMONITOR
 
 #include <TimerOne.h>
 #include <Wire.h>
-//#include <EEPROM.h> //probably not needed
 #include <Canbus.h>
+#include <SPI.h>
+#include <SD.h>
 #include <defaults.h>
 #include <global.h>
 #include <stdio.h>
 #include <mcp2515.h>
 #include <mcp2515_defs.h> 
 #include <LiquidCrystal_I2C.h>
-#include <SPI.h>
 
-#ifdef DATALOGGER
 #include <SD.h>
   #define TIME_TO_CLOSE   15
   int fileCloseCounter =0;
   File dataFile;
   const int chipSelect = 9; //The CARD_SC pin on the sparkfun board
   String timeStamp;
-#endif //DATALOGGER
 
 #include "usbcan.h"
 
@@ -475,7 +476,7 @@ int init_module( unsigned long baudrate )
         #endif
         return 0;
     }
- 
+
   if(!Canbus.init(mcp2515_speed))
     {
       // initialization failed!
@@ -613,10 +614,11 @@ void setFilter()
 // 012173BE: PAM
 // 03C01428: ?
 // 01E0162A: ?
-  uint32_t masks[1] = {0xffffffff};
-  uint32_t filters[2] = {0x000FFFFE, 0x01200021};
   
-  mcp2515_setHWFilter(masks,1, filters, 2);
+  //uint32_t masks[1] = {0xffffffff};
+  //uint32_t filters[2] = {0x000FFFFE, 0x01200021};
+  
+  //mcp2515_setHWFilter(masks,1, filters, 2);
 
 
 }
@@ -633,8 +635,6 @@ void setup() {
   // The uart is the standard output device STDOUT.
   stdout = &uartout ;
 
-  printf("setup()");
-
   #ifdef LCD
     lcd.begin(16, 2);
     lcd.print(F("S60 logger CAN"));
@@ -646,19 +646,18 @@ void setup() {
     lcd.clear();
   #endif
 
-  #ifdef DATALOGGER
+  //#ifdef DATALOGGER: perform initialization routine anyway...
     if (!SD.begin(chipSelect)) 
        Serial.println("Card NOK");
-  #endif
+  //#endif
 
   // we have to initialize the CAN module anyway, otherwise SPI commands (read registers/status/get_operation_mode etc) hang during invocation
   if (!init_module(500000))
     printf("NOK");
   // set MCP2551 to normal mode
+ 
   pinMode(MCP2551_STANDBY_PIN,OUTPUT);
-  printf("MCP2551 stb OK");
   digitalWrite(MCP2551_STANDBY_PIN,LOW);
-  printf("MCP2551 OK");
   
   #ifdef USBCAN
     UsbCAN::init_protocol();
@@ -736,7 +735,6 @@ void setup() {
   last_monitor_frequency = 10; //every second
 #endif DPFMONITOR
 
-printf("Setup OK");
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////

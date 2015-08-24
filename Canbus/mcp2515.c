@@ -28,6 +28,7 @@
 #include <avr/pgmspace.h>
 
 #include "global.h"
+//#include <SPI.h>
 #include "mcp2515.h"
 #include "mcp2515_defs.h"
 
@@ -140,6 +141,7 @@ void mcp2515_reset(void)
     spi_putc(MCP_RESET);
     MCP2515_UNSELECT();
     delay(10);
+
 }
 // -------------------------------------------------------------------------
 uint8_t mcp2515_init(uint8_t speed)
@@ -149,7 +151,6 @@ uint8_t mcp2515_init(uint8_t speed)
 	//char msg[32];
 	//sprintf(msg,"speed: %02x |", (uint8_t)(speed) );
 	//printf(msg);
-
 	mcp2515_reset();
 	//set config mode
 	result = mcp2515_setCANCTRL_Mode(MODE_CONFIG);
