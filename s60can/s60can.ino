@@ -19,6 +19,8 @@
 **
 ** You should have received a copy of the GNU Lesser General Public
 ** License along with this program; if not, <http://www.gnu.org/licenses/>.
+** Changelog:
+** 24-08-2015: Start of dpfmonitor branch
 **
 */
 
@@ -39,7 +41,7 @@
 
 // This enables using the apparatus as an indepent DPF temp monitor 
 //  the original goal for making this :)
-//#define DPFMONITOR
+#define DPFMONITOR
 
 #include <TimerOne.h>
 #include <Wire.h>
@@ -109,7 +111,7 @@ char foo;  // for the sake of Arduino header parsing anti-automagic. Remove and 
   #ifdef DPFMONITOR
     tCAN monitormsg; //hard coded dpf temp monitor message
     unsigned long last_monitor_msg;
-    unsigned long last_monitor_frequency; //frequency in 1/10 seconds. 0=diagnostich messaging disabled
+    unsigned long last_monitor_frequency; //frequency in 1/10 seconds. 0=diagnostic messaging disabled
   #endif
     
   char msgFromHost[32]; // message that is being read from host
@@ -301,17 +303,22 @@ void write_CAN_reg(unsigned char ucAddress, unsigned char ucData) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void write_DPF_msg_on_LCD (tCAN *message) {
-  char msg[32];
-  char data[8];
-  unsigned long temp;
-  lcd.clear();
-  lcd.setCursor(0,0);
 
-// TODO: This should be fixed...
-//  temp = ((message->data[5]) << 8) | (message->data[6]); //temp in degrees Kelvin
-//  temp = (temp - 2731.5)/10;
+ lcd.clear();
+ lcd.setCursor(0,0);
+  char temp[5]; 
+  char msg[16];
+  uint8_t reg2;
+  float kelvin = 2731.5;
+  float result;
+  uint16_t reg1 = (message->data[5] << 8);
+  reg2 = (message->data[6]);
 
-//  sprintf("DPF temp: , %ul degC", temp);
+  uint16_t value = ((uint16_t)(reg1 | reg2) & 0xFFFF);
+  result = (value - kelvin)/10;
+  dtostrf(result,4,1,temp);
+  sprintf(msg, "DPF: %s degC", temp);
+  lcd.print(msg);
   
 }
 
@@ -390,7 +397,7 @@ int send_CAN_msg(tCAN * msg)  {
   #ifdef LCD
     //disable this for monitoring mode
     #ifndef DPFMONITOR
-      show_CAN_msg_on_LCD(msg, false);
+      write_DPF_msg_on_LCD(msg, false);
     #endif
   #endif
   
@@ -704,8 +711,11 @@ void setup() {
     monitormsg.data[2] = 0xA6;
     monitormsg.data[3] = 0x01;
     monitormsg.data[4] = 0x96;
-    monitormsg.data[5] = 0x01;
-    monitormsg.data[6] = 0x00;
+    //for loopback testing:
+    monitormsg.data[5] = 0x0B;
+    monitormsg.data[6] = 0xD4; //temp of 29.6
+    //monitormsg.data[5] = 0x01;
+    //monitormsg.data[6] = 0x00;
     monitormsg.data[7] = 0x00;
   #endif
 
@@ -716,7 +726,7 @@ void setup() {
   delay(10);
 
   //This sets DEFAULT mode:
-  switch_mode(MODE_NORMAL);
+  switch_mode(MODE_LOOPBACK);
 
   #ifdef DEBUG_FREE_MEM
     unsigned int freemem = freeRam();
@@ -753,7 +763,9 @@ int isDPFMessage(tCAN * message) {
 
   // Ignore canid. Different cars may send different diagnostic id's
   // DPF-return message contains: CE 11 E6 01 96 xx yy 00. E6 01 96 are relevant
-  return ((message->data[2] == 0xE6) && (message->data[3] == 0x01) && (message->data[4] == 0x96));
+  //return ((message->data[2] == 0xE6) && (message->data[3] == 0x01) && (message->data[4] == 0x96));
+  //loopback testing:
+  return ((message->data[2] == 0xA6) && (message->data[3] == 0x01) && (message->data[4] == 0x96));
 
 }
  
