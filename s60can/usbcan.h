@@ -86,6 +86,18 @@ extern volatile uint16_t CAN_flags;
 extern volatile uint8_t last_ecr;
 extern volatile uint8_t last_alc;
 */
+int convert_string_to_int( char * src, unsigned long * dest, int byteCount );
+int convert_string_to_int( char * src, unsigned long * dest );
+int convert_ascii_to_nibble(char c);
+
+uint8_t read_status();
+void clear_bus_errors();
+
+int set_fixed_filter_pattern( unsigned long pattern );
+int set_fixed_filter_mask( unsigned long mask );
+
+uint8_t read_CAN_reg (uint8_t reg);
+void write_CAN_reg (uint8_t reg, uint8_t data);
 
 namespace UsbCAN {
   

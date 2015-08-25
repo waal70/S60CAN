@@ -1,3 +1,4 @@
+
 /* S60 CAN  - Arduino firmware - version 0.5 alpha
 **
 ** Copyright (c) 2015 André de Waal
@@ -18,6 +19,8 @@
 **
 ** You should have received a copy of the GNU Lesser General Public
 ** License along with this program; if not, <http://www.gnu.org/licenses/>.
+** Changelog:
+** 24-08-2015: Start of dpfmonitor branch
 **
 */
 
@@ -28,11 +31,14 @@
 //#define DEBUG_MAIN
 //#define DEBUG_FREE_MEM
 // This enables the logging of the messages to an attached SD-card
+// Warning, although this is for SD-logging, without this define
+// still Serial initialization takes place. TODO: fix
 //#define DATALOGGER
 
 // This enables the sending of periodic keep-alive messages
 // Also pretty useful for loopback testing
-//#define KEEPALIVE
+#define KEEPALIVE
+#define LOOPBACKMODE   0
 
 // This enables using the apparatus as an indepent DPF temp monitor 
 //  the original goal for making this :)
@@ -40,24 +46,22 @@
 
 #include <TimerOne.h>
 #include <Wire.h>
-//#include <EEPROM.h> //probably not needed
 #include <Canbus.h>
+#include <SPI.h>
+#include <SD.h>
 #include <defaults.h>
 #include <global.h>
 #include <stdio.h>
 #include <mcp2515.h>
 #include <mcp2515_defs.h> 
 #include <LiquidCrystal_I2C.h>
-#include <SPI.h>
 
-#ifdef DATALOGGER
 #include <SD.h>
   #define TIME_TO_CLOSE   15
   int fileCloseCounter =0;
   File dataFile;
   const int chipSelect = 9; //The CARD_SC pin on the sparkfun board
   String timeStamp;
-#endif //DATALOGGER
 
 #include "usbcan.h"
 
@@ -89,6 +93,7 @@ char foo;  // for the sake of Arduino header parsing anti-automagic. Remove and 
 // initialize the library with the numbers of the interface pins
 #ifdef LCD
   LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);
+  int globalMessageCounter = 0;
 #endif
 
 // This enables using this as a passthru-device according to Lawicel standards
@@ -108,7 +113,7 @@ char foo;  // for the sake of Arduino header parsing anti-automagic. Remove and 
   #ifdef DPFMONITOR
     tCAN monitormsg; //hard coded dpf temp monitor message
     unsigned long last_monitor_msg;
-    unsigned long last_monitor_frequency; //frequency in 1/10 seconds. 0=diagnostich messaging disabled
+    unsigned long last_monitor_frequency; //frequency in 1/10 seconds. 0=diagnostic messaging disabled
   #endif
     
   char msgFromHost[32]; // message that is being read from host
@@ -233,84 +238,41 @@ int switch_mode(unsigned int mode) {
   #endif
   return (ret_mode == mode);
 }
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-int convert_ascii_to_nibble(char c)
-{
-	if ((c >= '0') && (c <= '9'))
-		return c - '0';
-	if ((c >= 'A') && (c <= 'F'))
-		return 10 + c - 'A';
-	if ((c >= 'a') && (c <= 'f'))
-		return 10 + c - 'a';
-	return 16; // in case of error
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-int convert_string_to_int( char * src, unsigned long * dest, int byteCount )
-  {
-  int nibble=0;
-  int index=0;
-  uint32_t number = 0;
-  while ( (index<byteCount) && src[index] && ((nibble=convert_ascii_to_nibble(src[index]))!=16) )
-    {
-    number *= 16;
-    number += nibble;
-    index++;  
-    }
-  *dest = number;
-  if (nibble==16)  // error converting ascii to byte
-    return -1;
-  return 0;
-  }
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-int convert_string_to_int( char * src, unsigned long * dest )
-{
-  return convert_string_to_int( src, dest, 256 );
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void set_fixed_filter_mask(unsigned long ulData) {
-  
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void set_fixed_filter_pattern(unsigned long ulData) {
-  
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void read_CAN_reg(unsigned char ucData) {
-  
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void write_CAN_reg(unsigned char ucAddress, unsigned char ucData) {
-  
-}
-
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void write_DPF_msg_on_LCD (tCAN *message) {
-  char msg[32];
-  char data[8];
-  unsigned long temp;
-  lcd.clear();
-  lcd.setCursor(0,0);
 
-// TODO: This should be fixed...
-//  temp = ((message->data[5]) << 8) | (message->data[6]); //temp in degrees Kelvin
-//  temp = (temp - 2731.5)/10;
+  //pre-condition isDPFMessage is true (1)
+ lcd.clear();
+ lcd.backlight();
+ lcd.setCursor(0,0);
+  char temp[7]; 
+  char msg[16];
+  uint16_t value;
+  // CD 11 E6 01 96 0B D4 00
+  // This gets the 6th and 7th element from the DPF response message (tested through isDPFMessage())
+  // And calculates the temperature as follows:
+  // Decimal value is temperature in tenths of degrees Kelvin. Therefore:
+  // decimal value /10 - 273.15 = degrees celsius:
+  value = (uint16_t)(((message->data[5] << 8) | (message->data[6])) & 0xFFFF);
 
-//  sprintf("DPF temp: , %ul degC", temp);
+  // Check for a valid temperature, between 0 and 2000 degrees celsius
+  // Character buffers need to be at least 1 character longer than the number of characters you are writing to them
+  // As we are writing 0.1 to maximum 2000.0 this means a buffer of 6+1
+  if (((double)value > 2732) && ((double)value < 22732) )
+  {
+    dtostrf((value-2731.5)/10,4,1,temp);
+    //337 is the degree symbol
+    sprintf(msg, "DPF: %s \337C", temp);
+    lcd.print(msg);
+  }
+  else
+    lcd.print(F("DPF: 0 \337C"));
+
+  lcd.setCursor(0,1);
+  lcd.print(globalMessageCounter);
+
+  globalMessageCounter++;
   
 }
 
@@ -389,7 +351,7 @@ int send_CAN_msg(tCAN * msg)  {
   #ifdef LCD
     //disable this for monitoring mode
     #ifndef DPFMONITOR
-      show_CAN_msg_on_LCD(msg, false);
+      write_DPF_msg_on_LCD(msg, false);
     #endif
   #endif
   
@@ -475,7 +437,7 @@ int init_module( unsigned long baudrate )
         #endif
         return 0;
     }
- 
+
   if(!Canbus.init(mcp2515_speed))
     {
       // initialization failed!
@@ -512,81 +474,6 @@ int init_module( unsigned long baudrate )
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// maps MCP2515 status registers to SJA1000 format for Lawicell compatibility
-uint8_t read_status()
-{
-  uint8_t mcp2515_eflg = mcp2515_read_register(EFLG);  
-  uint8_t mcp2515_st = mcp2515_read_status(SPI_READ_STATUS);
-
-  // SPI_READ_STATUS:
-  // bit 0: CANINTF.RX0IF
-  // bit 1: CANINTFL.RX1IF
-  // bit 2: TXB0CNTRL.TXREQ
-  // bit 3: CANINTF.TX0IF
-  // bit 4: TXB1CNTRL.TXRREQ
-  // bit 5: CANINTF.TX1IF
-  // bit 6: TXB2CNTRL.TXREQ
-  // bit 7: CANINTF.TX2IF
-  
-  uint8_t st = 0;  // Lawicel/USBCAN status
-
-  // Bit 0 CAN receive FIFO queue full
-  if (GETBIT(mcp2515_st,0) && GETBIT(mcp2515_st,1))  // both receive buffers full
-    SETBIT(st,0);
-
-  // Bit 1 CAN transmit FIFO queue full
-  if (GETBIT(mcp2515_st,2) && GETBIT(mcp2515_st,4) && GETBIT(mcp2515_st,6) )  // all three receive buffers full
-    SETBIT(st,1);
-
-  // Bit 2 Error warning (EI), see SJA1000 datasheet
-  if (GETBIT(mcp2515_eflg,0))  // EWARN
-    SETBIT(st,2);
-
-  // Bit 3 Data Overrun (DOI), see SJA1000 datasheet
-  if (GETBIT(mcp2515_eflg,7) || GETBIT(mcp2515_eflg,6))  // overflow in one of the two receive buffers
-    SETBIT(st,3);  
-
-  // Bit 4 Not used.
-  
-  // Bit 5 Error Passive (EPI), see SJA1000 datasheet
-   if (GETBIT(mcp2515_eflg,3) || GETBIT(mcp2515_eflg,4))  // either transmit of receive passive flag is set
-    SETBIT(st,5); 
-  
-  // Bit 6 Arbitration Lost (ALI), see SJA1000 datasheet *
-  uint8_t mcp2515_txb0ctrl = mcp2515_read_status(TXB0CTRL);
-  uint8_t mcp2515_txb1ctrl = mcp2515_read_status(TXB1CTRL);
-  uint8_t mcp2515_txb2ctrl = mcp2515_read_status(TXB2CTRL);
-  if ( GETBIT(mcp2515_txb0ctrl,MLOA) || GETBIT(mcp2515_txb1ctrl,MLOA) || GETBIT(mcp2515_txb2ctrl,MLOA) )
-    SETBIT(st,6);   
-  
-  // Bit 7 Bus Error (BEI), see SJA1000 datasheet **
-  if (GETBIT(mcp2515_eflg,5))   // FIXME: does this bit mean Bus-off error (transmit errors>255) or one-time bus error??
-    SETBIT(st,7);
-
-  return st;
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void clear_bus_errors()
-{  
-  // clear transmit buffers
-  mcp2515_bit_modify(TXB0CTRL, (1<<TXREQ), 0);
-  mcp2515_bit_modify(TXB1CTRL, (1<<TXREQ), 0);
-  mcp2515_bit_modify(TXB2CTRL, (1<<TXREQ), 0);
-
-  // clear interrupts
-  mcp2515_write_register(CANINTF,0);
-  
-  // enter the configuration mode to clear all error counters
-  mcp2515_bit_modify(CANCTRL, (1<<REQOP2)|(1<<REQOP1)|(1<<REQOP0), 1<<REQOP2);
-  delay(1);
-  // reset device to normal mode
-  mcp2515_bit_modify(CANCTRL, (1<<REQOP2)|(1<<REQOP1)|(1<<REQOP0), 0);  
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 void setFilter()
 {
   //setHWFilter (masks[], len_masks, ids[], len_ids)
@@ -613,14 +500,14 @@ void setFilter()
 // 012173BE: PAM
 // 03C01428: ?
 // 01E0162A: ?
-  uint32_t masks[1] = {0xffffffff};
-  uint32_t filters[2] = {0x000FFFFE, 0x01200021};
   
-  mcp2515_setHWFilter(masks,1, filters, 2);
+  uint32_t masks[2] = {0xffffffff, 0xffffffff};
+  uint32_t filters[6] = {0x000FFFFE, 0x01200021, 0x00000000, 0x00000000, 0x00000000, 0x00000000};
+  
+  mcp2515_setHWFilter(masks,2, filters, 6);
 
 
 }
-
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -633,8 +520,6 @@ void setup() {
   // The uart is the standard output device STDOUT.
   stdout = &uartout ;
 
-  printf("setup()");
-
   #ifdef LCD
     lcd.begin(16, 2);
     lcd.print(F("S60 logger CAN"));
@@ -646,19 +531,18 @@ void setup() {
     lcd.clear();
   #endif
 
-  #ifdef DATALOGGER
+  //#ifdef DATALOGGER: perform initialization routine anyway...
     if (!SD.begin(chipSelect)) 
        Serial.println("Card NOK");
-  #endif
+  //#endif
 
   // we have to initialize the CAN module anyway, otherwise SPI commands (read registers/status/get_operation_mode etc) hang during invocation
   if (!init_module(500000))
     printf("NOK");
   // set MCP2551 to normal mode
+ 
   pinMode(MCP2551_STANDBY_PIN,OUTPUT);
-  printf("MCP2551 stb OK");
   digitalWrite(MCP2551_STANDBY_PIN,LOW);
-  printf("MCP2551 OK");
   
   #ifdef USBCAN
     UsbCAN::init_protocol();
@@ -707,6 +591,11 @@ void setup() {
     monitormsg.data[4] = 0x96;
     monitormsg.data[5] = 0x01;
     monitormsg.data[6] = 0x00;
+    //for loopback testing:
+    if (LOOPBACKMODE) {
+      monitormsg.data[5] = 0x0F;
+      monitormsg.data[6] = 0xD9; // OBD4 = temp of 29.6, 58CB = temp of 2000
+      } 
     monitormsg.data[7] = 0x00;
   #endif
 
@@ -717,8 +606,11 @@ void setup() {
   delay(10);
 
   //This sets DEFAULT mode:
-  switch_mode(MODE_NORMAL);
-
+  if (LOOPBACKMODE)
+    switch_mode(MODE_LOOPBACK);
+  else
+    switch_mode(MODE_NORMAL);
+    
   #ifdef DEBUG_FREE_MEM
     unsigned int freemem = freeRam();
     printf("free mem: ");
@@ -728,15 +620,14 @@ void setup() {
 #ifdef KEEPALIVE
  // set keepalive timeout to 0 if you do not require timeouts.
  // works in 1/10 seconds
-  keepalive_timeout = 0;
+  keepalive_timeout = 40;
   keepalive_timeout2 = 0;
 #endif KEEPALIVE
 
 #ifdef DPFMONITOR
-  last_monitor_frequency = 10; //every second
+  last_monitor_frequency = 35; //every second
 #endif DPFMONITOR
 
-printf("Setup OK");
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -754,12 +645,15 @@ int is_in_normal_mode()
 int isDPFMessage(tCAN * message) {
 
   // Ignore canid. Different cars may send different diagnostic id's
-  // DPF-return message contains: CE 11 E6 01 96 xx yy 00. E6 01 96 are relevant
-  return ((message->data[2] == 0xE6) && (message->data[3] == 0x01) && (message->data[4] == 0x96));
+  // DPF-return message contains: CE 11 E6 01 96 xx yy 00. 11 E6 01 96 are relevant
+  //loopback testing:
+  if (LOOPBACKMODE)
+      return ((message->data[1] == 0x11) && (message->data[2] == 0xA6) && (message->data[3] == 0x01) && (message->data[4] == 0x96));
+  else
+      return ((message->data[1] == 0x11) && (message->data[2] == 0xE6) && (message->data[3] == 0x01) && (message->data[4] == 0x96));
 
 }
  
-
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void handle_CAN_rx() {

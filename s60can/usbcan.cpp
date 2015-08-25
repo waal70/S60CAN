@@ -681,6 +681,145 @@ ascii2byte (uint8_t * val)
 
     return temp & 0x0F;
 }
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+int set_fixed_filter_mask(unsigned long ulData) {
+  //NOP
+  
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+int set_fixed_filter_pattern(unsigned long ulData) {
+  
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+uint8_t read_CAN_reg(unsigned char ucData) {
+  
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void write_CAN_reg(unsigned char ucAddress, unsigned char ucData) {
+  
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+int convert_ascii_to_nibble(char c)
+{
+  if ((c >= '0') && (c <= '9'))
+    return c - '0';
+  if ((c >= 'A') && (c <= 'F'))
+    return 10 + c - 'A';
+  if ((c >= 'a') && (c <= 'f'))
+    return 10 + c - 'a';
+  return 16; // in case of error
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+int convert_string_to_int( char * src, unsigned long * dest, int byteCount )
+  {
+  int nibble=0;
+  int index=0;
+  uint32_t number = 0;
+  while ( (index<byteCount) && src[index] && ((nibble=convert_ascii_to_nibble(src[index]))!=16) )
+    {
+    number *= 16;
+    number += nibble;
+    index++;  
+    }
+  *dest = number;
+  if (nibble==16)  // error converting ascii to byte
+    return -1;
+  return 0;
+  }
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+int convert_string_to_int( char * src, unsigned long * dest )
+{
+  return convert_string_to_int( src, dest, 256 );
+}
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void clear_bus_errors()
+{  
+  // clear transmit buffers
+  mcp2515_bit_modify(TXB0CTRL, (1<<TXREQ), 0);
+  mcp2515_bit_modify(TXB1CTRL, (1<<TXREQ), 0);
+  mcp2515_bit_modify(TXB2CTRL, (1<<TXREQ), 0);
+
+  // clear interrupts
+  mcp2515_write_register(CANINTF,0);
+  
+  // enter the configuration mode to clear all error counters
+  mcp2515_bit_modify(CANCTRL, (1<<REQOP2)|(1<<REQOP1)|(1<<REQOP0), 1<<REQOP2);
+  delay(1);
+  // reset device to normal mode
+  mcp2515_bit_modify(CANCTRL, (1<<REQOP2)|(1<<REQOP1)|(1<<REQOP0), 0);  
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// maps MCP2515 status registers to SJA1000 format for Lawicell compatibility
+uint8_t read_status()
+{
+  uint8_t mcp2515_eflg = mcp2515_read_register(EFLG);  
+  uint8_t mcp2515_st = mcp2515_read_status(SPI_READ_STATUS);
+
+  // SPI_READ_STATUS:
+  // bit 0: CANINTF.RX0IF
+  // bit 1: CANINTFL.RX1IF
+  // bit 2: TXB0CNTRL.TXREQ
+  // bit 3: CANINTF.TX0IF
+  // bit 4: TXB1CNTRL.TXRREQ
+  // bit 5: CANINTF.TX1IF
+  // bit 6: TXB2CNTRL.TXREQ
+  // bit 7: CANINTF.TX2IF
+  
+  uint8_t st = 0;  // Lawicel/USBCAN status
+
+  // Bit 0 CAN receive FIFO queue full
+  if (GETBIT(mcp2515_st,0) && GETBIT(mcp2515_st,1))  // both receive buffers full
+    SETBIT(st,0);
+
+  // Bit 1 CAN transmit FIFO queue full
+  if (GETBIT(mcp2515_st,2) && GETBIT(mcp2515_st,4) && GETBIT(mcp2515_st,6) )  // all three receive buffers full
+    SETBIT(st,1);
+
+  // Bit 2 Error warning (EI), see SJA1000 datasheet
+  if (GETBIT(mcp2515_eflg,0))  // EWARN
+    SETBIT(st,2);
+
+  // Bit 3 Data Overrun (DOI), see SJA1000 datasheet
+  if (GETBIT(mcp2515_eflg,7) || GETBIT(mcp2515_eflg,6))  // overflow in one of the two receive buffers
+    SETBIT(st,3);  
+
+  // Bit 4 Not used.
+  
+  // Bit 5 Error Passive (EPI), see SJA1000 datasheet
+   if (GETBIT(mcp2515_eflg,3) || GETBIT(mcp2515_eflg,4))  // either transmit of receive passive flag is set
+    SETBIT(st,5); 
+  
+  // Bit 6 Arbitration Lost (ALI), see SJA1000 datasheet *
+  uint8_t mcp2515_txb0ctrl = mcp2515_read_status(TXB0CTRL);
+  uint8_t mcp2515_txb1ctrl = mcp2515_read_status(TXB1CTRL);
+  uint8_t mcp2515_txb2ctrl = mcp2515_read_status(TXB2CTRL);
+  if ( GETBIT(mcp2515_txb0ctrl,MLOA) || GETBIT(mcp2515_txb1ctrl,MLOA) || GETBIT(mcp2515_txb2ctrl,MLOA) )
+    SETBIT(st,6);   
+  
+  // Bit 7 Bus Error (BEI), see SJA1000 datasheet **
+  if (GETBIT(mcp2515_eflg,5))   // FIXME: does this bit mean Bus-off error (transmit errors>255) or one-time bus error??
+    SETBIT(st,7);
+
+  return st;
+}
 
 
 namespace UsbCAN {
