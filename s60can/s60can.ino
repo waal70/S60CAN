@@ -308,15 +308,15 @@ void write_DPF_msg_on_LCD (tCAN *message) {
  lcd.setCursor(0,0);
   char temp[5]; 
   char msg[16];
-  uint8_t reg2;
-  float kelvin = 2731.5;
+  uint16_t value;
   float result;
-  uint16_t reg1 = (message->data[5] << 8);
-  reg2 = (message->data[6]);
-
-  uint16_t value = ((uint16_t)(reg1 | reg2) & 0xFFFF);
-  result = (value - kelvin)/10;
-  dtostrf(result,4,1,temp);
+  // CD 11 E6 01 96 0B D4 00
+  // This gets the 6th and 7th element from the DPF response message (tested through isDPFMessage())
+  // And calculates the temperature as follows:
+  // Decimal value is temperature in tenths of degrees Kelvin. Therefore:
+  // decimal value /10 - 273.15 = degrees celsius:
+  value = (uint16_t)(((message->data[5] << 8) | (message->data[6])) & 0xFFFF);
+  dtostrf((value-2731.5)/10,4,1,temp);
   sprintf(msg, "DPF: %s degC", temp);
   lcd.print(msg);
   
