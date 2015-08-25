@@ -37,7 +37,8 @@
 
 // This enables the sending of periodic keep-alive messages
 // Also pretty useful for loopback testing
-//#define KEEPALIVE
+#define KEEPALIVE
+#define LOOPBACKMODE   0
 
 // This enables using the apparatus as an indepent DPF temp monitor 
 //  the original goal for making this :)
@@ -92,6 +93,7 @@ char foo;  // for the sake of Arduino header parsing anti-automagic. Remove and 
 // initialize the library with the numbers of the interface pins
 #ifdef LCD
   LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);
+  int globalMessageCounter = 0;
 #endif
 
 // This enables using this as a passthru-device according to Lawicel standards
@@ -304,21 +306,37 @@ void write_CAN_reg(unsigned char ucAddress, unsigned char ucData) {
 
 void write_DPF_msg_on_LCD (tCAN *message) {
 
+  //pre-condition isDPFMessage is true (1)
  lcd.clear();
+ lcd.backlight();
  lcd.setCursor(0,0);
-  char temp[5]; 
+  char temp[7]; 
   char msg[16];
   uint16_t value;
-  float result;
   // CD 11 E6 01 96 0B D4 00
   // This gets the 6th and 7th element from the DPF response message (tested through isDPFMessage())
   // And calculates the temperature as follows:
   // Decimal value is temperature in tenths of degrees Kelvin. Therefore:
   // decimal value /10 - 273.15 = degrees celsius:
   value = (uint16_t)(((message->data[5] << 8) | (message->data[6])) & 0xFFFF);
-  dtostrf((value-2731.5)/10,4,1,temp);
-  sprintf(msg, "DPF: %s degC", temp);
-  lcd.print(msg);
+
+  // Check for a valid temperature, between 0 and 2000 degrees celsius
+  // Character buffers need to be at least 1 character longer than the number of characters you are writing to them
+  // As we are writing 0.1 to maximum 2000.0 this means a buffer of 6+1
+  if (((double)value > 2732) && ((double)value < 22732) )
+  {
+    dtostrf((value-2731.5)/10,4,1,temp);
+    //337 is the degree symbol
+    sprintf(msg, "DPF: %s \337C", temp);
+    lcd.print(msg);
+  }
+  else
+    lcd.print(F("DPF: 0 \337C"));
+
+  lcd.setCursor(0,1);
+  lcd.print(globalMessageCounter);
+
+  globalMessageCounter++;
   
 }
 
@@ -622,10 +640,10 @@ void setFilter()
 // 03C01428: ?
 // 01E0162A: ?
   
-  uint32_t masks[1] = {0xffffffff};
-  uint32_t filters[2] = {0x000FFFFE, 0x01200021};
+  uint32_t masks[2] = {0xffffffff, 0xffffffff};
+  uint32_t filters[6] = {0x000FFFFE, 0x01200021, 0x00000000, 0x00000000, 0x00000000, 0x00000000};
   
-  mcp2515_setHWFilter(masks,1, filters, 2);
+  mcp2515_setHWFilter(masks,2, filters, 6);
 
 
 }
@@ -711,11 +729,13 @@ void setup() {
     monitormsg.data[2] = 0xA6;
     monitormsg.data[3] = 0x01;
     monitormsg.data[4] = 0x96;
-    //for loopback testing:
-    //monitormsg.data[5] = 0x0B;
-    //monitormsg.data[6] = 0xD4; //temp of 29.6
     monitormsg.data[5] = 0x01;
     monitormsg.data[6] = 0x00;
+    //for loopback testing:
+    if (LOOPBACKMODE) {
+      monitormsg.data[5] = 0x58;
+      monitormsg.data[6] = 0xCB; // OBD4 = temp of 29.6, 58CB = temp of 2000
+      } 
     monitormsg.data[7] = 0x00;
   #endif
 
@@ -726,8 +746,11 @@ void setup() {
   delay(10);
 
   //This sets DEFAULT mode:
-  switch_mode(MODE_NORMAL);
-
+  if (LOOPBACKMODE)
+    switch_mode(MODE_LOOPBACK);
+  else
+    switch_mode(MODE_NORMAL);
+    
   #ifdef DEBUG_FREE_MEM
     unsigned int freemem = freeRam();
     printf("free mem: ");
@@ -737,12 +760,12 @@ void setup() {
 #ifdef KEEPALIVE
  // set keepalive timeout to 0 if you do not require timeouts.
  // works in 1/10 seconds
-  keepalive_timeout = 0;
+  keepalive_timeout = 40;
   keepalive_timeout2 = 0;
 #endif KEEPALIVE
 
 #ifdef DPFMONITOR
-  last_monitor_frequency = 10; //every second
+  last_monitor_frequency = 35; //every second
 #endif DPFMONITOR
 
 }
@@ -762,10 +785,14 @@ int is_in_normal_mode()
 int isDPFMessage(tCAN * message) {
 
   // Ignore canid. Different cars may send different diagnostic id's
-  // DPF-return message contains: CE 11 E6 01 96 xx yy 00. E6 01 96 are relevant
-  return ((message->data[2] == 0xE6) && (message->data[3] == 0x01) && (message->data[4] == 0x96));
+  // DPF-return message contains: CE 11 E6 01 96 xx yy 00. 11 E6 01 96 are relevant
   //loopback testing:
-  //return ((message->data[2] == 0xA6) && (message->data[3] == 0x01) && (message->data[4] == 0x96));
+  if (LOOPBACKMODE)
+      return ((message->data[1] == 0x11) && (message->data[2] == 0xA6) && (message->data[3] == 0x01) && (message->data[4] == 0x96));
+  else
+      return ((message->data[1] == 0x11) && (message->data[2] == 0xE6) && (message->data[3] == 0x01) && (message->data[4] == 0x96));
+
+
 
 }
  

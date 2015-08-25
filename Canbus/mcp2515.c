@@ -261,6 +261,12 @@ void mcp2515_setHWFilter(uint32_t masks[], int len_mask, uint32_t data_ids[], in
   //    if ((message->id & 0xffff0000) == 0x00800000)
   // Also, there can only  be mask0 and mask1 (2)
   //  There can only be filter0,1,2,3,4,5 (6)
+  // Acceptance filters RXF0 and RXF1 (and
+  //	filter mask RXM0) are associated with RXB0. Filters
+  //	RXF2, RXF3, RXF4, RXF5 and mask RXM1 are
+  //	associated with RXB1.
+  //
+  //
   
   if (len_mask > 2)
 	len_mask = 2;
