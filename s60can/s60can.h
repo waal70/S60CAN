@@ -52,29 +52,14 @@
 
 #define _send_to_host(...) { printf(__VA_ARGS__); }
 
-int convert_string_to_int( char * src, unsigned long * dest, int byteCount );
-int convert_string_to_int( char * src, unsigned long * dest );
-int convert_ascii_to_nibble(char c);
-
-void SetErrorStatus( unsigned int errStatus );
-
 
 int send_CAN_msg(tCAN * msg);
 void set_keepalive_timeout( unsigned long timeout );
 int init_module( unsigned long baudrate );
-int set_fixed_filter_pattern( unsigned long pattern );
-int set_fixed_filter_mask( unsigned long mask );
 int is_in_normal_mode();
 unsigned int get_operation_mode();
 
 int switch_mode( unsigned int mode);
-
-uint8_t read_status();
-void clear_bus_errors();
-
-uint8_t read_CAN_reg (uint8_t reg);
-void write_CAN_reg (uint8_t reg, uint8_t data);
-
 
 #endif
 
