@@ -763,9 +763,9 @@ int isDPFMessage(tCAN * message) {
 
   // Ignore canid. Different cars may send different diagnostic id's
   // DPF-return message contains: CE 11 E6 01 96 xx yy 00. E6 01 96 are relevant
-  //return ((message->data[2] == 0xE6) && (message->data[3] == 0x01) && (message->data[4] == 0x96));
+  return ((message->data[2] == 0xE6) && (message->data[3] == 0x01) && (message->data[4] == 0x96));
   //loopback testing:
-  return ((message->data[2] == 0xA6) && (message->data[3] == 0x01) && (message->data[4] == 0x96));
+  //return ((message->data[2] == 0xA6) && (message->data[3] == 0x01) && (message->data[4] == 0x96));
 
 }
  
