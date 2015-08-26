@@ -17,8 +17,6 @@
 ** License along with this program; if not, <http://www.gnu.org/licenses/>.
 **
 */
-#ifndef _SARDINE_H
-#define _SARDINE_H
 #include <mcp2515.h> 
 
 /*#define MODE_NORMAL 0
@@ -61,5 +59,4 @@ unsigned int get_operation_mode();
 
 int switch_mode( unsigned int mode);
 
-#endif
 

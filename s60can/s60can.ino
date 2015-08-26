@@ -3,9 +3,6 @@
 **
 ** Copyright (c) 2015 André de Waal
 **
-** Portions/heavily borrowed from:
-** Copyright (C) 2012 Olaf @ Hacking Volvo blog (hackingvolvo.blogspot.com)
-** Author: Olaf <hackingvolvo@gmail.com>
 **
 ** This program is free software; you can redistribute it and/or modify
 ** it under the terms of the GNU Lesser General Public License as published
@@ -21,6 +18,7 @@
 ** License along with this program; if not, <http://www.gnu.org/licenses/>.
 ** Changelog:
 ** 24-08-2015: Start of dpfmonitor branch
+** 26-08-2015: Start of EGRMonitor branch
 **
 */
 
@@ -55,6 +53,7 @@
 #include <mcp2515.h>
 #include <mcp2515_defs.h> 
 #include <LiquidCrystal_I2C.h>
+#include "s60can_msgs.h"
 
 #include <SD.h>
   #define TIME_TO_CLOSE   15
@@ -100,21 +99,6 @@ char foo;  // for the sake of Arduino header parsing anti-automagic. Remove and 
 // In effect, dispatching received messages to the USB
 #define USBCAN    // we are using CANUSB (Lawicel) / CAN232 format by default now
 
-  #ifdef KEEPALIVE
-    tCAN keepalive_msg;  // hard coded keepalive message
-    unsigned long last_keepalive_msg;
-    unsigned long keepalive_timeout; // timeout in 1/10 seconds. 0=keepalive messaging disabled
-    
-    tCAN keepalive_msg2;  // hard coded keepalive message
-    unsigned long last_keepalive_msg2;
-    unsigned long keepalive_timeout2; // timeout in 1/10 seconds. 0=keepalive messaging disabled
-  #endif
-
-  #ifdef DPFMONITOR
-    tCAN monitormsg; //hard coded dpf temp monitor message
-    unsigned long last_monitor_msg;
-    unsigned long last_monitor_frequency; //frequency in 1/10 seconds. 0=diagnostic messaging disabled
-  #endif
     
   char msgFromHost[32]; // message that is being read from host
   int msgLen=0;
@@ -243,8 +227,10 @@ int switch_mode(unsigned int mode) {
 void write_DPF_msg_on_LCD (tCAN *message) {
 
   //pre-condition isDPFMessage is true (1)
- lcd.clear();
- lcd.backlight();
+ //lcd.clearLine(0);
+ //lcd.backlight();
+ lcd.setCursor(0,0);
+ lcd.write("                ");
  lcd.setCursor(0,0);
   char temp[7]; 
   char msg[16];
@@ -269,11 +255,45 @@ void write_DPF_msg_on_LCD (tCAN *message) {
   else
     lcd.print(F("DPF: 0 \337C"));
 
-  lcd.setCursor(0,1);
+  lcd.setCursor(12,1);
   lcd.print(globalMessageCounter);
 
   globalMessageCounter++;
   
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void write_EGR_msg_on_LCD (tCAN *message) {
+
+  //pre-condition isDPFMessage is true (1)
+ //lcd.clearLine(0);
+ //lcd.backlight();
+ lcd.setCursor(0,1);
+ lcd.write("          ");
+ lcd.setCursor(0,1);
+  char temp[7]; 
+  char msg[16];
+  float factor = 0.01220703125;
+  uint16_t value;
+  // CD 11 E6 01 96 0B D4 00
+  // This gets the 6th and 7th element from the DPF response message (tested through isDPFMessage())
+  // And calculates the temperature as follows:
+  // Decimal value is temperature in tenths of degrees Kelvin. Therefore:
+  // decimal value /10 - 273.15 = degrees celsius:
+  value = (uint16_t)(((message->data[5] << 8) | (message->data[6])) & 0xFFFF);
+
+  // Check for a valid temperature, between 0 and 2000 degrees celsius
+  // Character buffers need to be at least 1 character longer than the number of characters you are writing to them
+  // As we are writing 0.1 to maximum 2000.0 this means a buffer of 6+1
+  if (((double)value > 0) && ((double)value < 8193) )
+  {
+    dtostrf((double)value*factor,3,1,temp);
+    //337 is the degree symbol
+    sprintf(msg, "EGR: %s%%", temp);
+    lcd.print(msg);
+  }
+  else
+    lcd.print(F("EGR: 0 %"));  
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -348,6 +368,7 @@ void write_CAN_msg_to_file( tCAN * message, bool recv )
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 int send_CAN_msg(tCAN * msg)  {   
+  printf("send_CAN_msg");
   #ifdef LCD
     //disable this for monitoring mode
     #ifndef DPFMONITOR
@@ -368,15 +389,6 @@ int send_CAN_msg(tCAN * msg)  {
   }
   return ret; // FIXME: we return the result of adding the msg to MCP2515 internal buffer, not actually the result of sending it! 
   }
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-#ifdef KEEPALIVE
-void set_keepalive_timeout( unsigned long timeout )
-{
- keepalive_timeout = timeout;
-}
-#endif KEEPALIVE
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -550,53 +562,11 @@ void setup() {
 
   delay(500); 
   #ifdef KEEPALIVE
-    last_keepalive_msg=millis();
-    
-    // live keepalive message:
-    //000FFFFE 8 D8 00 00 00 00 00 00 00
-  
-    // initialize the keep-alive message
-    keepalive_msg.header.rtr = 0;
-    keepalive_msg.header.eid = 1;
-    keepalive_msg.header.length = 8;
-    keepalive_msg.id = 0x000ffffe;
-    keepalive_msg.data[0] = 0xd8;
-    for (int i=1;i<8;i++)
-      keepalive_msg.data[i] = 0x00;  
-
-  // initialize the keep-alive message
-    last_keepalive_msg2=millis();
-
-    keepalive_msg2.header.rtr = 0;
-    keepalive_msg2.header.eid = 1;
-    keepalive_msg2.header.length = 8;
-    keepalive_msg2.id = 0x01017ffc;
-    for (int i=0;i<8;i++)
-      keepalive_msg2.data[i] = 0x00;  
-    keepalive_msg2.data[4] = 0x1f;
-    keepalive_msg2.data[5] = 0x40;
+    init_keepalive(LOOPBACKMODE);
   #endif //KEEPALIVE
 
   #ifdef DPFMONITOR
-  // initialize the dpf monitoring message
-    last_monitor_msg=millis();
-    monitormsg.header.rtr = 0;
-    monitormsg.header.eid = 1;
-    monitormsg.header.length = 8;
-    monitormsg.id = 0x000ffffe; //default diagnostic id
-    monitormsg.data[0] = 0xCD;  
-    monitormsg.data[1] = 0x11;
-    monitormsg.data[2] = 0xA6;
-    monitormsg.data[3] = 0x01;
-    monitormsg.data[4] = 0x96;
-    monitormsg.data[5] = 0x01;
-    monitormsg.data[6] = 0x00;
-    //for loopback testing:
-    if (LOOPBACKMODE) {
-      monitormsg.data[5] = 0x0F;
-      monitormsg.data[6] = 0xD9; // OBD4 = temp of 29.6, 58CB = temp of 2000
-      } 
-    monitormsg.data[7] = 0x00;
+    init_dpf(LOOPBACKMODE);
   #endif
 
   //set the filters for the messages
@@ -617,43 +587,16 @@ void setup() {
     printf(freemem);
   #endif
 
-#ifdef KEEPALIVE
- // set keepalive timeout to 0 if you do not require timeouts.
- // works in 1/10 seconds
-  keepalive_timeout = 40;
-  keepalive_timeout2 = 0;
-#endif KEEPALIVE
-
-#ifdef DPFMONITOR
-  last_monitor_frequency = 35; //every second
-#endif DPFMONITOR
-
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 int is_in_normal_mode()
 {
   return (get_operation_mode() == MODE_NORMAL);
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// 1 = succes, 0 = fail
-int isDPFMessage(tCAN * message) {
-
-  // Ignore canid. Different cars may send different diagnostic id's
-  // DPF-return message contains: CE 11 E6 01 96 xx yy 00. 11 E6 01 96 are relevant
-  //loopback testing:
-  if (LOOPBACKMODE)
-      return ((message->data[1] == 0x11) && (message->data[2] == 0xA6) && (message->data[3] == 0x01) && (message->data[4] == 0x96));
-  else
-      return ((message->data[1] == 0x11) && (message->data[2] == 0xE6) && (message->data[3] == 0x01) && (message->data[4] == 0x96));
-
-}
- 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void handle_CAN_rx() {
@@ -670,9 +613,10 @@ void handle_CAN_rx() {
             #endif
           #endif
           if (isDPFMessage(&message))
-          {
             write_DPF_msg_on_LCD(&message);
-          }
+          if (isEGRMessage(&message))
+            write_EGR_msg_on_LCD(&message);
+          
           #ifdef DATALOGGER
             write_CAN_msg_to_file(&message, true);
             // check if RX buffer overflow has occured since last receive
@@ -744,31 +688,10 @@ void loop() {
 
   handle_host_messages();
   handle_CAN_rx();
+
+  checksend_CAN_msgs();
   
-  #ifdef KEEPALIVE
-    if (keepalive_timeout>0)
-      if (millis()-last_keepalive_msg > keepalive_timeout *100)
-        {
-          send_CAN_msg(&keepalive_msg);
-          last_keepalive_msg = millis();
-        }
 
-    if (keepalive_timeout2>0)
-      if (millis()-last_keepalive_msg2 > keepalive_timeout2 *100)
-        {
-          send_CAN_msg(&keepalive_msg2);
-          last_keepalive_msg2 = millis();
-        }
-  #endif
-
-  #ifdef DPFMONITOR
-    if (last_monitor_frequency>0)
-      if (millis()-last_monitor_msg > last_monitor_frequency *100)
-        {
-          send_CAN_msg(&monitormsg);
-          last_monitor_msg = millis();
-        }
-  #endif
       
   checkRam();
 }
