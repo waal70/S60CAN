@@ -87,6 +87,32 @@ int isEGRMessage(tCAN * message) {
       return ((message->data[1] == 0x11) && (message->data[2] == 0xE6) && (message->data[3] == 0x00) && (message->data[4] == 0x2C));
 
 }
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// 1 = succes, 0 = fail
+int isOILMessage(tCAN * message) {
+
+  // Ignore canid. Different cars may send different diagnostic id's
+  // DPF-return message contains: CE 11 E6 01 96 xx yy 00. 11 E6 01 96 are relevant
+  //loopback testing:
+  if (LOOPBACKMODE)
+      return ((message->data[1] == 0x11) && (message->data[2] == 0xA6) && (message->data[3] == 0x00) && (message->data[4] == 0x2C));
+  else
+      return ((message->data[1] == 0x11) && (message->data[2] == 0xE6) && (message->data[3] == 0x00) && (message->data[4] == 0x2C));
+
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// 1 = succes, 0 = fail
+int isBOOSTMessage(tCAN * message) {
+
+  // Ignore canid. Different cars may send different diagnostic id's
+  // DPF-return message contains: CE 11 E6 01 96 xx yy 00. 11 E6 01 96 are relevant
+  //loopback testing:
+  if (LOOPBACKMODE)
+      return ((message->data[1] == 0x11) && (message->data[2] == 0xA6) && (message->data[3] == 0x00) && (message->data[4] == 0x2C));
+  else
+      return ((message->data[1] == 0x11) && (message->data[2] == 0xE6) && (message->data[3] == 0x00) && (message->data[4] == 0x2C));
+
+}
  
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 tCAN construct_CAN_msg(int msgType) {
