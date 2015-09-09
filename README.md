@@ -22,26 +22,26 @@ Connecting to the HS-CAN means you are possibly interfering with "under the bonn
 IF YOU DO NOT KNOW WHAT YOU ARE DOING, DO NOT ATTEMPT TO MODIFY YOUR CAR!
 
 SETUP:
-1x Arduino Uno R3. The DIP-chip version, NOT the surface mounted one. If that should be relevant :)
-1x SKPang CANBUS shield, including SD card reader
-1x OBD -> serial female connector (DB9F)
-1x 20x4 LCD, i2c (the four lead version: VCC, GND, SDA & SCL)
+* 1x Arduino Uno R3. The DIP-chip version, NOT the surface mounted one. If that should be relevant :)
+* 1x SKPang CANBUS shield, including SD card reader
+* 1x OBD -> serial female connector (DB9F)
+* 1x 20x4 LCD, i2c (the four lead version: VCC, GND, SDA & SCL)
 Optional:
-For logging purposes: a FAT16 or FAT32 formatted micro SD card
+* For logging purposes: a FAT16 or FAT32 formatted micro SD card
 ATTENTION: I have developed and tested with an SD-card always present. Because the SD communication
 also uses the SPI-bus (as does the CAN-interface), I cannot guarantee flawless operation WITHOUT an SD-card present.
 
 LIBRARIES:
 You will need the following libraries to succesfully run this project:
-1) Canbus (included in this repository)
-2) LiquidCrystal_I2C (publicly available everywhere, I'm using Francisco Malpartida's version from 20/08/11)
-3) TimerOne (https://github.com/PaulStoffregen/TimerOne)
+* 1) Canbus (included in this repository)
+* 2) LiquidCrystal_I2C (publicly available everywhere, I'm using Francisco Malpartida's version from 20/08/11)
+* 3) TimerOne (https://github.com/PaulStoffregen/TimerOne)
 Included in this repository is a makeJunction.bat. I suggest you keep the Canbus library in the same directory as the base for this git-repo. Through makeJunction.bat you can then create a symbolic link from within the Arduino libraries folder to this folder. In this way, you will keep all the source-code nicely bundled, and it will save you from copying library files hence and forth
 
 CONFIGURATION:
 Look up the proper communication speeds for your modelyear car. Mine, a P2 S60 of model year 2009, uses
-125kbps for the low-speed CANBUS and
-500kbps for the high-speed CANBUS.
+* 125kbps for the low-speed CANBUS and
+* 500kbps for the high-speed CANBUS.
 In the setup() routine, this speed is set for the remainder of the session, so change this for your case.
 This HS-CAN is what you will need for the important stuff: DPF temperature monitoring.
 
