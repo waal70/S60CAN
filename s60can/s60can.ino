@@ -3,7 +3,7 @@
 **
 ** Copyright (c) 2015 André de Waal
 **
-** Large portions copied from Olaf @ hackingvolvo.blogspot.com
+**
 ** This program is free software; you can redistribute it and/or modify
 ** it under the terms of the GNU Lesser General Public License as published
 ** by the Free Software Foundation, either version 3 of the License, or (at
@@ -20,7 +20,6 @@
 ** 24-08-2015: Start of dpfmonitor branch
 ** 26-08-2015: Start of EGRMonitor branch
 ** 08-09-2015: New display, 20x4
-** 09-09-2015: Implemented oil and boost pressure readings
 */
 
 //TODO:
@@ -257,7 +256,7 @@ void write_DPF_msg_on_LCD (tCAN *message) {
     lcd.print(msg);
   }
   else
-    lcd.print(F("DPF: ERR \337C"));
+    lcd.print(F("DPF: 0 \337C"));
 
   lcd.setCursor(16,3);
   lcd.print(globalMessageCounter);
@@ -297,7 +296,7 @@ void write_EGR_msg_on_LCD (tCAN *message) {
     lcd.print(msg);
   }
   else
-    lcd.print(F("EGR: ERR %"));  
+    lcd.print(F("EGR: 0 %"));  
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -307,9 +306,10 @@ void write_OIL_msg_on_LCD (tCAN *message) {
   lcd.setCursor(0,2);
   char temp[7]; 
   char msg[16];
+  float factor = 0.01220703125;
   uint16_t value;
   // CD 11 E6 01 96 0B D4 00
-  // This gets the 6th and 7th element from the OIL response message (tested through isOILMessage())
+  // This gets the 6th and 7th element from the DPF response message (tested through isDPFMessage())
   // And calculates the temperature as follows:
   // Decimal value is temperature in tenths of degrees Kelvin. Therefore:
   // decimal value /10 - 273.15 = degrees celsius:
@@ -317,43 +317,45 @@ void write_OIL_msg_on_LCD (tCAN *message) {
 
   // Check for a valid temperature, between 0 and 2000 degrees celsius
   // Character buffers need to be at least 1 character longer than the number of characters you are writing to them
-  // As we are writing 0.1 to maximum 999.9 this means a buffer of 5+1
+  // As we are writing 0.1 to maximum 2000.0 this means a buffer of 6+1
   if (((double)value > 0) && ((double)value < 8193) )
   {
-    dtostrf((double)value-2731.5,3,1,temp);
+    dtostrf((double)value*factor-12.3,3,1,temp);
     //337 is the degree symbol
     sprintf(msg, "OIL: %s \337C", temp);
     lcd.print(msg);
   }
   else
-    lcd.print(F("OIL: ERR \337C"));  
+    lcd.print(F("OIL: NaN"));  
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void write_BOOST_msg_on_LCD (tCAN *message) {
 
   lcd.setCursor(0,3);
-  char temp[5]; 
+  char temp[7]; 
   char msg[16];
-  float factor = 0.001;
+  float factor = 0.0001220703125;
   uint16_t value;
   // CD 11 E6 01 96 0B D4 00
-  // This gets the 6th and 7th element from the BOOST response message (tested through isBOOSTMessage())
-  // And calculates the boost pressure as follows:
-  // Decimal value is boost pressure in hectoPascals (1hPa = 1/1000 bar)
+  // This gets the 6th and 7th element from the DPF response message (tested through isDPFMessage())
+  // And calculates the temperature as follows:
+  // Decimal value is temperature in tenths of degrees Kelvin. Therefore:
+  // decimal value /10 - 273.15 = degrees celsius:
   value = (uint16_t)(((message->data[5] << 8) | (message->data[6])) & 0xFFFF);
 
   // Check for a valid temperature, between 0 and 2000 degrees celsius
   // Character buffers need to be at least 1 character longer than the number of characters you are writing to them
-  // As we are writing 1.00 to maximum 4.00 this means a buffer of 4+1
+  // As we are writing 0.1 to maximum 2000.0 this means a buffer of 6+1
   if (((double)value > 0) && ((double)value < 8193) )
   {
-    dtostrf((double)value*factor,1,2,temp);
+    dtostrf((double)value*factor+.65,2,2,temp);
+    //337 is the degree symbol
     sprintf(msg, "TRB: %s bar", temp);
     lcd.print(msg);
   }
   else
-    lcd.print(F("TRB: ERR bar"));  
+    lcd.print(F("TRB: 0 %"));  
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -626,7 +628,7 @@ void setup() {
   #endif //KEEPALIVE
 
   #ifdef DPFMONITOR
-    init_monitoring(LOOPBACKMODE);
+    init_dpf(LOOPBACKMODE);
   #endif
 
   //set the filters for the messages

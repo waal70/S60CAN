@@ -25,7 +25,7 @@
 #include "s60can.h"
 
 void init_keepalive(int blnLBM);
-void init_monitoring(int blnLBM);
+void init_dpf(int blnLBM);
 int isEGRMessage(tCAN * message);
 int isDPFMessage(tCAN * message);
 int isOILMessage(tCAN * message);
