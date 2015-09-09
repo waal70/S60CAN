@@ -21,11 +21,17 @@
 ** 26-08-2015: Start of EGRMonitor branch
 ** 08-09-2015: New display, 20x4
 ** 09-09-2015: Implemented oil and boost pressure readings
+* 
+* Memory footprint (last updated: 09-09-2015):
+* Global variables use 1,432 bytes (69%) of dynamic memory, leaving 616 bytes for local variables. Maximum is 2,048 bytes.
 */
 
 //TODO:
 // * Move all USBCAN-related functionality to USBCAN.CPP
 // * Currently ifdefs are being misused. Clean up
+//
+//
+// * Way-over-yonder: make the list of sensors to read dynamic
 
 //#define DEBUG_MAIN
 //#define DEBUG_FREE_MEM
@@ -269,26 +275,26 @@ void write_DPF_msg_on_LCD (tCAN *message) {
 
 void write_EGR_msg_on_LCD (tCAN *message) {
 
-  //pre-condition isDPFMessage is true (1)
+  //pre-condition isEGRMessage is true (1)
  //lcd.clearLine(0);
  //lcd.backlight();
  lcd.setCursor(0,1);
- lcd.write("          ");
+ lcd.write("          "); //we do this because initialization leaves characters on line 2
  lcd.setCursor(0,1);
-  char temp[7]; 
+  char temp[6]; 
   char msg[16];
   float factor = 0.01220703125;
   uint16_t value;
   // CD 11 E6 01 96 0B D4 00
-  // This gets the 6th and 7th element from the DPF response message (tested through isDPFMessage())
-  // And calculates the temperature as follows:
-  // Decimal value is temperature in tenths of degrees Kelvin. Therefore:
-  // decimal value /10 - 273.15 = degrees celsius:
+  // This gets the 6th and 7th element from the EGR response message (tested through isEGRMessage())
+  // And calculates the percentage as follows:
+  // Decimal value is 8192 (hex: 2000)-based, meaning 8192 corresponds with 100%
+  // Lower value is XXX, so the factor becomes 0.0122 (more or less)
   value = (uint16_t)(((message->data[5] << 8) | (message->data[6])) & 0xFFFF);
 
-  // Check for a valid temperature, between 0 and 2000 degrees celsius
+  // Check for a valid value, between 0 and 8193 decimal
   // Character buffers need to be at least 1 character longer than the number of characters you are writing to them
-  // As we are writing 0.1 to maximum 2000.0 this means a buffer of 6+1
+  // As we are writing 0.1 to maximum 100.0 this means a buffer of 5+1
   if (((double)value > 0) && ((double)value < 8193) )
   {
     dtostrf((double)value*factor,3,1,temp);
@@ -305,20 +311,20 @@ void write_OIL_msg_on_LCD (tCAN *message) {
 
   //pre-condition isOILMessage is true (1)
   lcd.setCursor(0,2);
-  char temp[7]; 
+  char temp[6]; 
   char msg[16];
   uint16_t value;
   // CD 11 E6 01 96 0B D4 00
   // This gets the 6th and 7th element from the OIL response message (tested through isOILMessage())
   // And calculates the temperature as follows:
   // Decimal value is temperature in tenths of degrees Kelvin. Therefore:
-  // decimal value /10 - 273.15 = degrees celsius:
+  // decimal value / 10 - 273.15 = degrees celsius:
   value = (uint16_t)(((message->data[5] << 8) | (message->data[6])) & 0xFFFF);
 
-  // Check for a valid temperature, between 0 and 2000 degrees celsius
+  // Check for a valid temperature, between 0 and 999.9 degrees celsius
   // Character buffers need to be at least 1 character longer than the number of characters you are writing to them
   // As we are writing 0.1 to maximum 999.9 this means a buffer of 5+1
-  if (((double)value > 0) && ((double)value < 8193) )
+  if (((double)value > 0) && ((double)value < 3732) )
   {
     dtostrf((double)value-2731.5,3,1,temp);
     //337 is the degree symbol
@@ -343,7 +349,7 @@ void write_BOOST_msg_on_LCD (tCAN *message) {
   // Decimal value is boost pressure in hectoPascals (1hPa = 1/1000 bar)
   value = (uint16_t)(((message->data[5] << 8) | (message->data[6])) & 0xFFFF);
 
-  // Check for a valid temperature, between 0 and 2000 degrees celsius
+  // Check for a valid pressure, between 0 and 4500 hPA
   // Character buffers need to be at least 1 character longer than the number of characters you are writing to them
   // As we are writing 1.00 to maximum 4.00 this means a buffer of 4+1
   if (((double)value > 0) && ((double)value < 8193) )

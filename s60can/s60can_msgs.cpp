@@ -18,6 +18,8 @@
 ** Changelog:
 ** 24-08-2015: Start of dpfmonitor branch
 ** 26-08-2015: Start of EGRMonitor branch
+** 08-09-2015: New display, 20x4
+** 09-09-2015: Implemented oil and boost pressure readings
 **
 */
 #include <Arduino.h>
@@ -27,6 +29,7 @@
 #define KEEPALIVE_MSG 0
 #define DPF_MSG 0x0196
 #define EGR_MSG 0x002C
+//NOTE: OIL_MSG and BOOST_MSG are now dummy values (incremented from DPF)
 #define OIL_MSG 0x0197
 #define BOOST_MSG 0x0198
 
