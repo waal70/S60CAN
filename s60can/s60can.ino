@@ -19,7 +19,7 @@
 ** Changelog:
 ** 24-08-2015: Start of dpfmonitor branch
 ** 26-08-2015: Start of EGRMonitor branch
-** 08-09-2015: New display, 20x4
+**
 */
 
 //TODO:
@@ -36,7 +36,7 @@
 // This enables the sending of periodic keep-alive messages
 // Also pretty useful for loopback testing
 #define KEEPALIVE
-#define LOOPBACKMODE   1
+#define LOOPBACKMODE   0
 
 // This enables using the apparatus as an indepent DPF temp monitor 
 //  the original goal for making this :)
@@ -91,9 +91,6 @@ char foo;  // for the sake of Arduino header parsing anti-automagic. Remove and 
 
 // initialize the library with the numbers of the interface pins
 #ifdef LCD
-  //GND, VCC to GND and 5V
-  //SDA to A4
-  //SCL to A5
   LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);
   int globalMessageCounter = 0;
 #endif
@@ -258,7 +255,7 @@ void write_DPF_msg_on_LCD (tCAN *message) {
   else
     lcd.print(F("DPF: 0 \337C"));
 
-  lcd.setCursor(16,3);
+  lcd.setCursor(12,1);
   lcd.print(globalMessageCounter);
 
   globalMessageCounter++;
@@ -297,65 +294,6 @@ void write_EGR_msg_on_LCD (tCAN *message) {
   }
   else
     lcd.print(F("EGR: 0 %"));  
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void write_OIL_msg_on_LCD (tCAN *message) {
-
-  //pre-condition isOILMessage is true (1)
-  lcd.setCursor(0,2);
-  char temp[7]; 
-  char msg[16];
-  float factor = 0.01220703125;
-  uint16_t value;
-  // CD 11 E6 01 96 0B D4 00
-  // This gets the 6th and 7th element from the DPF response message (tested through isDPFMessage())
-  // And calculates the temperature as follows:
-  // Decimal value is temperature in tenths of degrees Kelvin. Therefore:
-  // decimal value /10 - 273.15 = degrees celsius:
-  value = (uint16_t)(((message->data[5] << 8) | (message->data[6])) & 0xFFFF);
-
-  // Check for a valid temperature, between 0 and 2000 degrees celsius
-  // Character buffers need to be at least 1 character longer than the number of characters you are writing to them
-  // As we are writing 0.1 to maximum 2000.0 this means a buffer of 6+1
-  if (((double)value > 0) && ((double)value < 8193) )
-  {
-    dtostrf((double)value*factor-12.3,3,1,temp);
-    //337 is the degree symbol
-    sprintf(msg, "OIL: %s \337C", temp);
-    lcd.print(msg);
-  }
-  else
-    lcd.print(F("OIL: NaN"));  
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void write_BOOST_msg_on_LCD (tCAN *message) {
-
-  lcd.setCursor(0,3);
-  char temp[7]; 
-  char msg[16];
-  float factor = 0.0001220703125;
-  uint16_t value;
-  // CD 11 E6 01 96 0B D4 00
-  // This gets the 6th and 7th element from the DPF response message (tested through isDPFMessage())
-  // And calculates the temperature as follows:
-  // Decimal value is temperature in tenths of degrees Kelvin. Therefore:
-  // decimal value /10 - 273.15 = degrees celsius:
-  value = (uint16_t)(((message->data[5] << 8) | (message->data[6])) & 0xFFFF);
-
-  // Check for a valid temperature, between 0 and 2000 degrees celsius
-  // Character buffers need to be at least 1 character longer than the number of characters you are writing to them
-  // As we are writing 0.1 to maximum 2000.0 this means a buffer of 6+1
-  if (((double)value > 0) && ((double)value < 8193) )
-  {
-    dtostrf((double)value*factor+.65,2,2,temp);
-    //337 is the degree symbol
-    sprintf(msg, "TRB: %s bar", temp);
-    lcd.print(msg);
-  }
-  else
-    lcd.print(F("TRB: 0 %"));  
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -595,7 +533,7 @@ void setup() {
   stdout = &uartout ;
 
   #ifdef LCD
-    lcd.begin(20, 4);
+    lcd.begin(16, 2);
     lcd.print(F("S60 logger CAN"));
     lcd.setCursor(0, 1);  
     char version[16];
@@ -678,10 +616,6 @@ void handle_CAN_rx() {
             write_DPF_msg_on_LCD(&message);
           if (isEGRMessage(&message))
             write_EGR_msg_on_LCD(&message);
-          if (isOILMessage(&message))
-            write_OIL_msg_on_LCD(&message);
-          if (isBOOSTMessage(&message))
-            write_BOOST_msg_on_LCD(&message);
           
           #ifdef DATALOGGER
             write_CAN_msg_to_file(&message, true);

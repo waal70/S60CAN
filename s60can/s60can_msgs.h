@@ -28,6 +28,4 @@ void init_keepalive(int blnLBM);
 void init_dpf(int blnLBM);
 int isEGRMessage(tCAN * message);
 int isDPFMessage(tCAN * message);
-int isOILMessage(tCAN * message);
-int isBOOSTMessage(tCAN * message);
 void checksend_CAN_msgs();
