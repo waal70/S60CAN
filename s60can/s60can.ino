@@ -125,7 +125,7 @@ void display_operation_mode() {
     lcd.clear();
     lcd.setCursor(0,0);
     lcd.print(F("mode: "));
-    switch(Canbus.getMode())
+    switch((Canbus.getMode()))
       {
         case MODE_NORMAL:
           lcd.print(F("NO"));
@@ -414,7 +414,7 @@ int init_module( unsigned long baudrate )
     lcd.print(txt);
   #endif
 
-  if(!Canbus.init(baudrate))
+  if(!(Canbus.init(baudrate)))
     {
     // initialization failed!
     #ifdef LCD

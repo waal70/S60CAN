@@ -31,9 +31,12 @@ CanbusClass::CanbusClass() {
  
 }
 
-char CanbusClass::init(unsigned char speed) {
+char CanbusClass::init(unsigned long speed) {
 
   //check if init succesful
+  char msg[16];
+  sprintf(msg, "Speed: %ul", speed);
+  printf(msg);
   if (isSupportedBaudrate(speed)) {
 	if (mcp2515_init(speed))
 		{
@@ -53,11 +56,16 @@ char CanbusClass::init(unsigned char speed) {
 			mcp2515_bit_modify(RXB0CTRL, (1<<BUKT), (1<<BUKT));
 			return 1;
 		}
-	else
-		return 0;
+	else {
+			printf("mcp2515.init");
+			return 0;
+		}
 	}
   else
+  {
+	printf("not supported baudrate");
 	return 0;
+  }
  
 }
 ///////////////////////////////////////////////////////////////////////////////////
@@ -85,7 +93,7 @@ char* CanbusClass::getDisplayFilter() {
 }
 ///////////////////////////////////////////////////////////////////////////////////
 // returns 1 on succes, 0 on failure
-char CanbusClass::isSupportedBaudrate(unsigned char speed) {
+char CanbusClass::isSupportedBaudrate(unsigned long speed) {
 
 //Currently support 125000, 250000 and 500000
 

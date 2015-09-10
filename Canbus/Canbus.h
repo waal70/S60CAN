@@ -12,12 +12,12 @@ class CanbusClass
   public:
 
 	CanbusClass();
-    char init(unsigned char speed);
+    char init(unsigned long speed);
 	char setMode(unsigned int mode);
 	char getMode();
 	char* getDisplayFilter();
 private:
-	char isSupportedBaudrate(unsigned char speed);
+	char isSupportedBaudrate(unsigned long speed);
 	
 };
 extern CanbusClass Canbus;
