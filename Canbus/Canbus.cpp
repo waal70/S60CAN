@@ -12,7 +12,6 @@
 #include <stdint.h>
 
 #include <stdio.h>
-#include <avr/io.h>
 #include <inttypes.h>
 #include "mcp2515.h"
 #include "Canbus.h"
@@ -35,23 +34,27 @@ CanbusClass::CanbusClass() {
 char CanbusClass::init(unsigned char speed) {
 
   //check if init succesful
-  if (mcp2515_init(speed))
-	{
-		// we need to be in config mode by default, before opening the channel
-		setMode(MODE_CONFIG);
-	
-		// don't require interrupts from successful send
-		mcp2515_bit_modify(CANINTE, (1<<TX0IE), 0);
+  if (isSupportedBaudrate(speed)) {
+	if (mcp2515_init(speed))
+		{
+			// we need to be in config mode by default, before opening the channel
+			setMode(MODE_CONFIG);
 		
-		// enable one-shot mode, if needed. By default: off (connected to car)
-		#ifdef ONE_SHOT_MODE
-			mcp2515_bit_modify(CANCTRL, (1<<OSM), (1<<OSM));
-		#else
-			mcp2515_bit_modify(CANCTRL, (1<<OSM), 0);
-		#endif
-		// roll-over: receiving message will be moved to receive buffer 1 if buffer 0 is full
-		mcp2515_bit_modify(RXB0CTRL, (1<<BUKT), (1<<BUKT));
-		return 1;
+			// don't require interrupts from successful send
+			mcp2515_bit_modify(CANINTE, (1<<TX0IE), 0);
+			
+			// enable one-shot mode, if needed. By default: off (connected to car)
+			#ifdef ONE_SHOT_MODE
+				mcp2515_bit_modify(CANCTRL, (1<<OSM), (1<<OSM));
+			#else
+				mcp2515_bit_modify(CANCTRL, (1<<OSM), 0);
+			#endif
+			// roll-over: receiving message will be moved to receive buffer 1 if buffer 0 is full
+			mcp2515_bit_modify(RXB0CTRL, (1<<BUKT), (1<<BUKT));
+			return 1;
+		}
+	else
+		return 0;
 	}
   else
 	return 0;
@@ -61,6 +64,24 @@ char CanbusClass::init(unsigned char speed) {
 // returns 1 on succes, 0 on failure
 char CanbusClass::setMode(unsigned int mode) {
 	mcp2515_setCANCTRL_Mode((uint8_t)mode);
+}
+///////////////////////////////////////////////////////////////////////////////////
+char CanbusClass::getMode() {
+	return mcp2515_read_register(CANCTRL);
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+char* CanbusClass::getDisplayFilter() {
+	//3 because I am returning an asterisk and one null character
+	char* result = (char*) malloc(2);
+    //WARNING: this only works if we are setting filter mode to either
+    // 11 or 00. This will incorrectly interpret intermediate settings!
+    uint8_t fltr = mcp2515_read_register(RXB0CTRL);
+    if (!((fltr & 0x60) == 0x60))
+      result = "*";
+	return result;
+        //one of the two bits is zero. Because of the above
+        // assumption, both bits are zero. Therefore, filter is set.
 }
 ///////////////////////////////////////////////////////////////////////////////////
 // returns 1 on succes, 0 on failure
