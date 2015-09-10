@@ -29,9 +29,8 @@
 #define KEEPALIVE_MSG 0
 #define DPF_MSG 0x0196
 #define EGR_MSG 0x002C
-//NOTE: OIL_MSG and BOOST_MSG are now dummy values (incremented from DPF)
-#define OIL_MSG 0x0197
-#define BOOST_MSG 0x0198
+#define OIL_MSG 0x00ED
+#define BOOST_MSG 0x0176
 
     int LOOPBACKMODE = 0;
     unsigned long last_keepalive_msg;
@@ -106,12 +105,12 @@ int isEGRMessage(tCAN * message) {
 int isOILMessage(tCAN * message) {
 
   // Ignore canid. Different cars may send different diagnostic id's
-  // DPF-return message contains: CE 11 E6 01 96 xx yy 00. 11 E6 01 96 are relevant
+  // DPF-return message contains: CE 11 E6 00 ED xx yy 00. 11 E6 00 ED are relevant
   //loopback testing:
   if (LOOPBACKMODE)
-      return ((message->data[1] == 0x11) && (message->data[2] == 0xA6) && (message->data[3] == 0x01) && (message->data[4] == 0x97));
+      return ((message->data[1] == 0x11) && (message->data[2] == 0xA6) && (message->data[3] == 0x00) && (message->data[4] == 0xED));
   else
-      return ((message->data[1] == 0x11) && (message->data[2] == 0xE6) && (message->data[3] == 0x01) && (message->data[4] == 0x97));
+      return ((message->data[1] == 0x11) && (message->data[2] == 0xE6) && (message->data[3] == 0x00) && (message->data[4] == 0xED));
 
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -119,12 +118,12 @@ int isOILMessage(tCAN * message) {
 int isBOOSTMessage(tCAN * message) {
 
   // Ignore canid. Different cars may send different diagnostic id's
-  // DPF-return message contains: CE 11 E6 01 96 xx yy 00. 11 E6 01 96 are relevant
+  // DPF-return message contains: CE 11 E6 01 76 xx yy 00. 11 E6 01 76 are relevant
   //loopback testing:
   if (LOOPBACKMODE)
-      return ((message->data[1] == 0x11) && (message->data[2] == 0xA6) && (message->data[3] == 0x01) && (message->data[4] == 0x98));
+      return ((message->data[1] == 0x11) && (message->data[2] == 0xA6) && (message->data[3] == 0x01) && (message->data[4] == 0x76));
   else
-      return ((message->data[1] == 0x11) && (message->data[2] == 0xE6) && (message->data[3] == 0x01) && (message->data[4] == 0x98));
+      return ((message->data[1] == 0x11) && (message->data[2] == 0xE6) && (message->data[3] == 0x01) && (message->data[4] == 0x76));
 
 }
  
@@ -194,14 +193,14 @@ tCAN construct_CAN_msg(int msgType) {
       message.data[0] = 0xCD;  
       message.data[1] = 0x11;
       message.data[2] = 0xA6;
-      message.data[3] = 0x01;
-      message.data[4] = 0x97;
+      message.data[3] = 0x00;
+      message.data[4] = 0xED;
       message.data[5] = 0x01;
       message.data[6] = 0x00;
       //for loopback testing:
       if (LOOPBACKMODE) {
-        message.data[5] = 0x0B;
-        message.data[6] = 0xD4; // 15DB = percentage of 67.%, 2000 = 100%
+        message.data[5] = 0x0E;
+        message.data[6] = 0x3C; // 0E3C = 91.66 degrees C, 0E39 = 90.96
         } 
       message.data[7] = 0x00;
       return message;
@@ -215,13 +214,13 @@ tCAN construct_CAN_msg(int msgType) {
       message.data[1] = 0x11;
       message.data[2] = 0xA6;
       message.data[3] = 0x01;
-      message.data[4] = 0x98;
+      message.data[4] = 0x76;
       message.data[5] = 0x01;
       message.data[6] = 0x00;
       //for loopback testing:
       if (LOOPBACKMODE) {
-        message.data[5] = 0x0E;
-        message.data[6] = 0x12; // 15DB = percentage of 67.%, 2000 = 100%
+        message.data[5] = 0x04;
+        message.data[6] = 0x09; // 0409 = 1033 hPa, 040D = 1037 hPa
         } 
       message.data[7] = 0x00;
       return message;

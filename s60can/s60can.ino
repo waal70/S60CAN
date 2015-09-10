@@ -314,8 +314,9 @@ void write_OIL_msg_on_LCD (tCAN *message) {
   char temp[6]; 
   char msg[16];
   uint16_t value;
-  // CD 11 E6 01 96 0B D4 00
+  // CD 11 E6 00 ED 0E 3C 00
   // This gets the 6th and 7th element from the OIL response message (tested through isOILMessage())
+  // 0E3C (3644) = 91.66, 0E39 (3641) = 90.96
   // And calculates the temperature as follows:
   // Decimal value is temperature in tenths of degrees Kelvin. Therefore:
   // decimal value / 10 - 273.15 = degrees celsius:
@@ -326,7 +327,7 @@ void write_OIL_msg_on_LCD (tCAN *message) {
   // As we are writing 0.1 to maximum 999.9 this means a buffer of 5+1
   if (((double)value > 0) && ((double)value < 3732) )
   {
-    dtostrf((double)value-2731.5,3,1,temp);
+    dtostrf((value-2731.5)/10,3,1,temp);
     //337 is the degree symbol
     sprintf(msg, "OIL: %s \337C", temp);
     lcd.print(msg);
@@ -343,7 +344,8 @@ void write_BOOST_msg_on_LCD (tCAN *message) {
   char msg[16];
   float factor = 0.001;
   uint16_t value;
-  // CD 11 E6 01 96 0B D4 00
+  // CD 11 E6 01 76 04 0D 00
+  // 040D (1037) = 1037 hPa, 0409 (1033) = 1033 hPa
   // This gets the 6th and 7th element from the BOOST response message (tested through isBOOSTMessage())
   // And calculates the boost pressure as follows:
   // Decimal value is boost pressure in hectoPascals (1hPa = 1/1000 bar)
