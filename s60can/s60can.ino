@@ -60,11 +60,7 @@
 #include "s60can_msgs.h"
 
 #include <SD.h>
-  #define TIME_TO_CLOSE   15
-  int fileCloseCounter =0;
-  File dataFile;
   const int chipSelect = 9; //The CARD_SC pin on the sparkfun board
-  String timeStamp;
 
 #include "usbcan.h"
 
@@ -233,7 +229,7 @@ void write_EGR_msg_on_LCD (tCAN *message) {
  //lcd.clearLine(0);
  //lcd.backlight();
  lcd.setCursor(0,1);
- lcd.write("          "); //we do this because initialization leaves characters on line 2
+ lcd.print(F("          ")); //we do this because initialization leaves characters on line 2
  lcd.setCursor(0,1);
   char temp[6]; 
   char msg[16];
@@ -355,7 +351,6 @@ void show_CAN_msg_on_LCD( tCAN * message, bool recv )
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 int send_CAN_msg(tCAN * msg)  {   
-  printf("send_CAN_msg");
   #ifdef LCD
     //disable this for monitoring mode
     #ifndef DPFMONITOR
@@ -488,12 +483,6 @@ void setup() {
 
   #ifdef LCD
     lcd.begin(20, 4);
-    lcd.print(F("S60 logger CAN"));
-    lcd.setCursor(0, 1);  
-    char version[16];
-    sprintf(version,"v%d.%d INIT",SW_VER_MAJOR,SW_VER_MINOR);
-    lcd.print(version);
-    //delay(1000); // a little time to read the status message
     lcd.clear();
   #endif
 
