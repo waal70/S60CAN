@@ -21,6 +21,7 @@
 ** 26-08-2015: Start of EGRMonitor branch
 ** 08-09-2015: New display, 20x4
 ** 09-09-2015: Implemented oil and boost pressure readings
+** 10-09-2015: Start of CodeCleanup branch
 * 
 * Memory footprint (last updated: 09-09-2015):
 * Global variables use 1,432 bytes (69%) of dynamic memory, leaving 616 bytes for local variables. Maximum is 2,048 bytes.
@@ -78,13 +79,6 @@ char foo;  // for the sake of Arduino header parsing anti-automagic. Remove and 
 #define SW_VER_MAJOR  0x05    // software major version
 #define SW_VER_MINOR  0x01    // software minor version
 #define MCP2551_STANDBY_PIN A1
-
-// ONE_SHOT_MODE tries to send message only once even if error occurs during transmit.  (see MCP2515 data sheet)
-// If we are testing the Sardine CAN without any other CAN device on the network, then there will be no ACK signals acknowledging that
-// transmit succeeded and thus sending fails. If this happens, MCP2515 will keep on sending the message forever and transmit buffers will eventually
-// fill up. Also cheap ELM327 clones (with older firmware) do not support ACK-signaling, so a network consisting of MCP2515 + ELM327 does not work
-// if ONE_SHOT_MODE is not enabled. You should however disable this when connecting Sardine CAN to a car
-//#define ONE_SHOT_MODE
 
 // Filter does not pass messages by default, since VIDA seems to crash at start if all CAN messages are transmitted to it. If you are not using VIDA but
 // for example CAN Hacker, you can uncomment this define or use Lawicell 'M' and 'm' commands to set acceptance register (set mask to 0x0 to pass all messages).
@@ -194,13 +188,13 @@ unsigned int get_operation_mode() {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 int switch_mode(unsigned int mode) {
-
+  uint8_t ret_mode = MODE_ERROR;
   #ifdef LCD
     lcd.clear();
   #endif 
-  mcp2515_setCANCTRL_Mode((uint8_t)mode);
-  uint8_t ret_mode = mcp2515_read_register(CANCTRL);
-  
+  if (Canbus.setMode(mode))
+    ret_mode = mcp2515_read_register(CANCTRL);
+
   get_operation_mode();  
   
   #ifdef LCD
@@ -498,52 +492,25 @@ int init_module( unsigned long baudrate )
     sprintf(txt,"%lu ",baudrate);
     lcd.print(txt);
   #endif
-  
-  unsigned char mcp2515_speed;
-  switch (baudrate)
+
+  //Check for supported baudrates
+  if (Canbus.isSupportedBaudrate(baudrate))
     {
-      case 125000:
-        mcp2515_speed=CANSPEED_125;
-        break;
-      case 250000:
-        mcp2515_speed=CANSPEED_250;
-        break;
-      case 500000:
-        mcp2515_speed=CANSPEED_500;
-        break;
-      default:
-        #ifdef LCD
-          lcd.print(F("unsup"));
-        #endif
-        return 0;
+      if(!Canbus.init(baudrate))
+        {
+          // initialization failed!
+          #ifdef LCD
+            lcd.print(F("fail!"));
+          #endif
+          #ifdef DEBUG_MAIN
+            printf("mcp2515 init failed!");
+          #endif
+          return 0;
+        }
     }
+  else
+    return 0;
 
-  if(!Canbus.init(mcp2515_speed))
-    {
-      // initialization failed!
-      #ifdef LCD
-        lcd.print(F("fail!"));
-      #endif
-      #ifdef DEBUG_MAIN
-	      printf("mcp2515 init failed!");
-      #endif
-      return 0;
-    }
-  // we need to be in config mode by default, before opening the channel
-  switch_mode(MODE_CONFIG);
-
-  // don't require interrupts from successful send
-  mcp2515_bit_modify(CANINTE, (1<<TX0IE), 0);
-
-  // enable one-shot mode
-  #ifdef ONE_SHOT_MODE
-    mcp2515_bit_modify(CANCTRL, (1<<OSM), (1<<OSM));
-  #else
-    mcp2515_bit_modify(CANCTRL, (1<<OSM), 0);
-  #endif
-  
-  // roll-over: receiving message will be moved to receive buffer 1 if buffer 0 is full
-  mcp2515_bit_modify(RXB0CTRL, (1<<BUKT), (1<<BUKT));
   
   #ifdef LCD
     lcd.setCursor(11,1);
@@ -583,8 +550,10 @@ void setFilter()
   
   uint32_t masks[2] = {0xffffffff, 0xffffffff};
   uint32_t filters[6] = {0x000FFFFE, 0x01200021, 0x00000000, 0x00000000, 0x00000000, 0x00000000};
-  
+
+  delay(10);
   mcp2515_setHWFilter(masks,2, filters, 6);
+  delay(10);
 
 
 }
@@ -620,7 +589,7 @@ void setup() {
   if (!init_module(500000))
     printf("NOK");
   // set MCP2551 to normal mode
- 
+  // TODO: move to abstraction?
   pinMode(MCP2551_STANDBY_PIN,OUTPUT);
   digitalWrite(MCP2551_STANDBY_PIN,LOW);
   
@@ -639,9 +608,7 @@ void setup() {
 
   //set the filters for the messages
   switch_mode(MODE_CONFIG);
-  delay(10);
-  setFilter();
-  delay(10);
+    setFilter();
 
   //This sets DEFAULT mode:
   if (LOOPBACKMODE)
@@ -763,8 +730,6 @@ void loop() {
 
   checksend_CAN_msgs();
   
-
-      
   checkRam();
 }
 

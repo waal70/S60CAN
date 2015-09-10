@@ -148,13 +148,9 @@ uint8_t mcp2515_init(uint8_t speed)
 {
 	
 	uint8_t result;
-	//char msg[32];
-	//sprintf(msg,"speed: %02x |", (uint8_t)(speed) );
-	//printf(msg);
 	mcp2515_reset();
-	//set config mode
 	result = mcp2515_setCANCTRL_Mode(MODE_CONFIG);
-	if (result >0)
+	if (result > 0)
 		return result;
 		
 	uint8_t set, cfg1, cfg2, cfg3;
@@ -163,17 +159,17 @@ uint8_t mcp2515_init(uint8_t speed)
 	
 	switch (speed)
 	{
-		case (7): //7=125 kbps
+		case (125000): //7=125 kbps
 			cfg1 = MCP_16MHz_125kBPS_CFG1;
 			cfg2 = MCP_16MHz_125kBPS_CFG2;
 			cfg3 = MCP_16MHz_125kBPS_CFG3;
 			break;
-		case (3):
+		case (250000):
 			cfg1 = MCP_16MHz_250kBPS_CFG1;
 			cfg2 = MCP_16MHz_250kBPS_CFG2;
 			cfg3 = MCP_16MHz_250kBPS_CFG3;
 			break;
-		case (1):
+		case (500000):
 			cfg1 = MCP_16MHz_500kBPS_CFG1;
 			cfg2 = MCP_16MHz_500kBPS_CFG2;
 			cfg3 = MCP_16MHz_500kBPS_CFG3;
