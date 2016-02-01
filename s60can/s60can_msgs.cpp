@@ -29,6 +29,8 @@
 #define KEEPALIVE_MSG 0
 #define DPF_MSG 0x0196
 #define EGR_MSG 0x002C
+#define S80_OIL_MSG 0x00ED
+#define S80_COOLANT_MSG 0x00ED
 #define OIL_MSG 0x00ED
 #define BOOST_MSG 0x0176
 
@@ -100,6 +102,34 @@ int isEGRMessage(tCAN * message) {
       return ((message->data[1] == 0x11) && (message->data[2] == 0xE6) && (message->data[3] == 0x00) && (message->data[4] == 0x2C));
 
 }
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// 1 = succes, 0 = fail
+int isS80CoolantMessage(tCAN * message) {
+
+  // Ignore canid. Different cars may send different diagnostic id's
+  // Coolant temperature-return message for S80 contains: CE 11 E6 00 ED xx yy 00. 11 E6 00 ED are relevant
+  //loopback testing:
+  if (LOOPBACKMODE)
+      return ((message->data[1] == 0x11) && (message->data[2] == 0xA6) && (message->data[3] == 0x00) && (message->data[4] == 0xED));
+  else
+      return ((message->data[1] == 0x11) && (message->data[2] == 0xE6) && (message->data[3] == 0x00) && (message->data[4] == 0xED));
+
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// 1 = succes, 0 = fail
+int isS80OILMessage(tCAN * message) {
+
+  // Ignore canid. Different cars may send different diagnostic id's
+  // OIL temperature-return message for S80 contains: CE 11 E6 00 ED xx yy 00. 11 E6 00 ED are relevant
+  //loopback testing:
+  if (LOOPBACKMODE)
+      return ((message->data[1] == 0x11) && (message->data[2] == 0xA6) && (message->data[3] == 0x00) && (message->data[4] == 0xED));
+  else
+      return ((message->data[1] == 0x11) && (message->data[2] == 0xE6) && (message->data[3] == 0x00) && (message->data[4] == 0xED));
+
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // 1 = succes, 0 = fail
 int isOILMessage(tCAN * message) {
@@ -181,6 +211,46 @@ tCAN construct_CAN_msg(int msgType) {
       if (LOOPBACKMODE) {
         message.data[5] = 0x20;
         message.data[6] = 0x00; // 15DB = percentage of 67.%, 2000 = 100%
+        } 
+      message.data[7] = 0x00;
+      return message;
+    break;
+    case (S80_COOLANT_MSG):
+      message.header.rtr = 0;
+      message.header.eid = 1;
+      message.header.length = 8;
+      message.id = 0x000ffffe; //default diagnostic id
+      message.data[0] = 0xCD;  
+      message.data[1] = 0x11;
+      message.data[2] = 0xA6;
+      message.data[3] = 0x00;
+      message.data[4] = 0xED;
+      message.data[5] = 0x01;
+      message.data[6] = 0x00;
+      //for loopback testing:
+      if (LOOPBACKMODE) {
+        message.data[5] = 0x0E;
+        message.data[6] = 0x3C; // 0E3C = 91.66 degrees C, 0E39 = 90.96
+        } 
+      message.data[7] = 0x00;
+      return message;
+    break;   
+    case (S80_OIL_MSG):
+      message.header.rtr = 0;
+      message.header.eid = 1;
+      message.header.length = 8;
+      message.id = 0x000ffffe; //default diagnostic id
+      message.data[0] = 0xCD;  
+      message.data[1] = 0x11;
+      message.data[2] = 0xA6;
+      message.data[3] = 0x00;
+      message.data[4] = 0xED;
+      message.data[5] = 0x01;
+      message.data[6] = 0x00;
+      //for loopback testing:
+      if (LOOPBACKMODE) {
+        message.data[5] = 0x0E;
+        message.data[6] = 0x3C; // 0E3C = 91.66 degrees C, 0E39 = 90.96
         } 
       message.data[7] = 0x00;
       return message;

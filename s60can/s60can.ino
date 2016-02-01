@@ -21,6 +21,7 @@
 ** 26-08-2015: Start of EGRMonitor branch
 ** 08-09-2015: New display, 20x4
 ** 09-09-2015: Implemented oil and boost pressure readings
+** 01-02-2016: Special branch for Patrick's S80 - oil temperature & cooling temperature
 * 
 * Memory footprint (last updated: 09-09-2015):
 * Global variables use 1,432 bytes (69%) of dynamic memory, leaving 616 bytes for local variables. Maximum is 2,048 bytes.
