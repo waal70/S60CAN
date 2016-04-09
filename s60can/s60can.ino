@@ -44,7 +44,7 @@
 // This enables the sending of periodic keep-alive messages
 // Also pretty useful for loopback testing
 #define KEEPALIVE
-#define LOOPBACKMODE   1
+#define LOOPBACKMODE   0
 
 // This enables using the apparatus as an indepent DPF temp monitor 
 //  the original goal for making this :)
@@ -251,20 +251,20 @@ void write_DPF_msg_on_LCD (tCAN *message) {
   // And calculates the temperature as follows:
   // Decimal value is temperature in tenths of degrees Kelvin. Therefore:
   // decimal value /10 - 273.15 = degrees celsius:
-  value = (uint16_t)(((message->data[5] << 8) | (message->data[6])) & 0xFFFF);
+  value = (uint8_t)(message->data[3]); // | (message->data[4])) & 0xFFFF);
 
   // Check for a valid temperature, between 0 and 2000 degrees celsius
   // Character buffers need to be at least 1 character longer than the number of characters you are writing to them
   // As we are writing 0.1 to maximum 2000.0 this means a buffer of 6+1
-  if (((double)value > 2732) && ((double)value < 22732) )
+  if (((double)value > 0) && ((double)value < 99999999) )
   {
-    dtostrf((value-2731.5)/10,4,1,temp);
+    dtostrf((value-40),4,1,temp);
     //337 is the degree symbol
-    sprintf(msg, "DPF: %s \337C", temp);
+    sprintf(msg, "KVL: %s \337C", temp);
     lcd.print(msg);
   }
   else
-    lcd.print(F("DPF: ERR \337C"));
+    lcd.print(F("KVL: ERR \337C"));
 
   lcd.setCursor(16,3);
   lcd.print(globalMessageCounter);
@@ -291,20 +291,20 @@ void write_EGR_msg_on_LCD (tCAN *message) {
   // And calculates the percentage as follows:
   // Decimal value is 8192 (hex: 2000)-based, meaning 8192 corresponds with 100%
   // Lower value is XXX, so the factor becomes 0.0122 (more or less)
-  value = (uint16_t)(((message->data[5] << 8) | (message->data[6])) & 0xFFFF);
+  value = (uint16_t)(((message->data[3] << 8) | (message->data[4])) & 0xFFFF);
 
   // Check for a valid value, between 0 and 8193 decimal
   // Character buffers need to be at least 1 character longer than the number of characters you are writing to them
   // As we are writing 0.1 to maximum 100.0 this means a buffer of 5+1
-  if (((double)value > 0) && ((double)value < 8193) )
+  if (((double)value > 0) && ((double)value < 3732) )
   {
-    dtostrf((double)value*factor,3,1,temp);
+    dtostrf((value-2731.5)/10,3,1,temp);
     //337 is the degree symbol
-    sprintf(msg, "EGR: %s%%", temp);
+    sprintf(msg, "TRX: %s \337C", temp);
     lcd.print(msg);
   }
   else
-    lcd.print(F("EGR: ERR %"));  
+    lcd.print(F("TRX: ERR \337C"));  
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -321,7 +321,7 @@ void write_OIL_msg_on_LCD (tCAN *message) {
   // And calculates the temperature as follows:
   // Decimal value is temperature in tenths of degrees Kelvin. Therefore:
   // decimal value / 10 - 273.15 = degrees celsius:
-  value = (uint16_t)(((message->data[5] << 8) | (message->data[6])) & 0xFFFF);
+  value = (uint16_t)(((message->data[3] << 8) | (message->data[4])) & 0xFFFF);
 
   // Check for a valid temperature, between 0 and 999.9 degrees celsius
   // Character buffers need to be at least 1 character longer than the number of characters you are writing to them
@@ -350,7 +350,7 @@ void write_BOOST_msg_on_LCD (tCAN *message) {
   // This gets the 6th and 7th element from the BOOST response message (tested through isBOOSTMessage())
   // And calculates the boost pressure as follows:
   // Decimal value is boost pressure in hectoPascals (1hPa = 1/1000 bar)
-  value = (uint16_t)(((message->data[5] << 8) | (message->data[6])) & 0xFFFF);
+  value = (uint16_t)(((message->data[4] << 8) | (message->data[5])) & 0xFFFF);
 
   // Check for a valid pressure, between 0 and 4500 hPA
   // Character buffers need to be at least 1 character longer than the number of characters you are writing to them
@@ -582,9 +582,16 @@ void setFilter()
 // 03C01428: ?
 // 01E0162A: ?
   
+<<<<<<< HEAD
   uint32_t masks[2] = {0xffffffff, 0xffffffff};
   uint32_t filters[6] = {0x000FFFFE, 0x01200021, 0x00000000, 0x00000000, 0x00000000, 0x00000000};
   
+=======
+  uint32_t masks[2] = {0x00000fff, 0x00000fff};
+  uint32_t filters[6] = {0x000007e0, 0x000007e8, 0x00000001, 0x00000002, 0x00000003, 0x00000004};
+
+  delay(10);
+>>>>>>> 7e07869... ff
   mcp2515_setHWFilter(masks,2, filters, 6);
 
 
