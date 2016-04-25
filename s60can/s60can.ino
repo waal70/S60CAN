@@ -23,8 +23,8 @@
 ** 09-09-2015: Implemented oil and boost pressure readings
 ** 10-09-2015: Start of CodeCleanup branch
 * 
-* Memory footprint (last updated: 09-09-2015):
-* Global variables use 1,432 bytes (69%) of dynamic memory, leaving 616 bytes for local variables. Maximum is 2,048 bytes.
+* Memory footprint (last updated: 25-04-2015):
+* Global variables use 1,432 bytes (69%) of dynamic memory, leaving 707 bytes for local variables. Maximum is 2,048 bytes.
 */
 
 //TODO:
