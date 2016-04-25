@@ -20,7 +20,6 @@
 ** 26-08-2015: Start of EGRMonitor branch
 ** 08-09-2015: New display, 20x4
 ** 09-09-2015: Implemented oil and boost pressure readings
-** 25-04-2016: Strict change between s60 and s80. This is the S60-file
 **
 */
 
