@@ -583,17 +583,10 @@ void setFilter()
 // 012173BE: PAM
 // 03C01428: ?
 // 01E0162A: ?
-  
-<<<<<<< HEAD
+ 
   uint32_t masks[2] = {0xffffffff, 0xffffffff};
   uint32_t filters[6] = {0x000FFFFE, 0x01200021, 0x00000000, 0x00000000, 0x00000000, 0x00000000};
-  
-=======
-  uint32_t masks[2] = {0x00000fff, 0x00000fff};
-  uint32_t filters[6] = {0x000007e0, 0x000007e8, 0x00000001, 0x00000002, 0x00000003, 0x00000004};
-
   delay(10);
->>>>>>> 7e07869... ff
   mcp2515_setHWFilter(masks,2, filters, 6);
 
 
