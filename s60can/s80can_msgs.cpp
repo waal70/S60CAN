@@ -1,3 +1,4 @@
+//========================S80 MESSAGES
 /* S60 CAN  - Arduino firmware - version 0.5 alpha
 **
 ** Copyright (c) 2015 André de Waal
@@ -16,13 +17,10 @@
 ** You should have received a copy of the GNU Lesser General Public
 ** License along with this program; if not, <http://www.gnu.org/licenses/>.
 ** Changelog:
-** 24-08-2015: Start of dpfmonitor branch
-** 26-08-2015: Start of EGRMonitor branch
-** 08-09-2015: New display, 20x4
-** 09-09-2015: Implemented oil and boost pressure readings
+** 25-04-2016: Start for S80 messages
 **
 */
-#if TARGETS80 == 0
+#if TARGETS80 == 1
 #include <Arduino.h>
 #include <mcp2515.h>
 #include "s60can.h"

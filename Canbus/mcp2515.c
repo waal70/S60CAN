@@ -467,7 +467,9 @@ uint8_t mcp2515_send_message(tCAN *message)
 	
 	return address;
 }
-
+#if TARGETS80 == 0
+////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////
 uint8_t mcp2515_send_message_J1939(tCAN *message)
 {
 	uint8_t status = mcp2515_read_status(SPI_READ_STATUS);
@@ -541,4 +543,72 @@ uint8_t mcp2515_send_message_J1939(tCAN *message)
 	
 	return address;
 }
+#else
+////////////////////S80-version starts here ///////////////////////////////////
+/////////
+///////////////////////////////////////////////////////////////////////////////
+
+uint8_t mcp2515_send_message_J1939(tCAN *message)
+{
+	// Status des MCP2515 auslesen
+	uint8_t status = mcp2515_read_status(SPI_READ_STATUS);
+	
+	/* Statusbyte:
+	 *
+	 * Bit	Funktion
+	 *  2	TXB0CNTRL.TXREQ
+	 *  4	TXB1CNTRL.TXREQ
+	 *  6	TXB2CNTRL.TXREQ
+	 */
+	uint8_t address;
+	if (_bit_is_clear(status, 2)) {
+		address = 0x00;
+	}
+	else if (_bit_is_clear(status, 4)) {
+		address = 0x02;
+	} 
+	else if (_bit_is_clear(status, 6)) {
+		address = 0x04;
+	}
+	else {
+		// All buffers are full
+		// Cannot send message:
+		return 0;
+	}
+	
+	RESET(MCP2515_CS);
+	spi_putc(SPI_WRITE_TX | address);
+	mcp2515_write_id(&message->id);
+
+	uint8_t length = message->header.length & 0x0f;
+	
+	// Is it a "Remote Transmit Request" ?
+	if (message->header.rtr)
+	{
+		spi_putc((1<<RTR) | length);
+	}
+	else
+	{
+		// Set message length
+		spi_putc(length);
+		
+		// Data
+		for (uint8_t i=0;i<length;i++) {
+			spi_putc(message->data[i]);
+		}
+	}
+	SET(MCP2515_CS);
+	
+	_delay_us(1);
+	
+	// Send CAN message
+	// Last 3 bits in RTS show which buffer is used to send
+	RESET(MCP2515_CS);
+	address = (address == 0) ? 1 : address;
+	spi_putc(SPI_RTS | address);
+	SET(MCP2515_CS);
+
+	return address;
+}
+#endif	
 

@@ -34,13 +34,23 @@ extern "C"
 // ----------------------------------------------------------------------------
 typedef struct
 {
-	uint32_t id;
-	struct {
-		int8_t rtr : 1;
-		uint8_t length : 4;
-		int8_t eid : 1;
-	} header;
-	uint8_t data[8];
+	#if TARGETS80 == 0	
+		uint32_t id;				//!< ID der Nachricht (29 Bit)
+		struct {
+			int rtr : 1;			//!< Remote-Transmit-Request-Frame?
+			uint8_t length : 4;		//!< Anzahl der Datenbytes
+			int eid : 1;			//!< extended ID?
+		} header;
+	#else
+		uint16_t id;				//!< ID der Nachricht (11 Bit)
+		struct {
+			int rtr : 1;			//!< Remote-Transmit-Request-Frame?
+			uint8_t length : 4;		//!< Anzahl der Datenbytes
+		} header;
+	#endif
+	
+	uint8_t data[8];			//!< Die Daten der CAN Nachricht
+	
 } tCAN;
 
 // ----------------------------------------------------------------------------

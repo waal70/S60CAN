@@ -22,9 +22,13 @@
 ** 08-09-2015: New display, 20x4
 ** 09-09-2015: Implemented oil and boost pressure readings
 ** 10-09-2015: Start of CodeCleanup branch
+** 25-04-2016: Special branch for Patrick, S80-can
 * 
 * Memory footprint (last updated: 25-04-2015):
 * Global variables use 1,432 bytes (69%) of dynamic memory, leaving 707 bytes for local variables. Maximum is 2,048 bytes.
+* 
+* Memory footprint after S80-changes (conditional #includes):
+* 
 */
 
 //TODO:
@@ -41,6 +45,8 @@
 // Also pretty useful for loopback testing
 #define KEEPALIVE
 #define LOOPBACKMODE   1
+// Set this to 1 if the target is a non-EID S80
+#define TARGETS80      0
 
 // This enables using the apparatus as an indepent DPF temp monitor 
 //  the original goal for making this :)
@@ -57,7 +63,13 @@
 #include <mcp2515.h>
 #include <mcp2515_defs.h> 
 #include <LiquidCrystal_I2C.h>
+
+#if TARGETS80 == 1
+#include "s80can_msgs.h"
+#else
 #include "s60can_msgs.h"
+#endif
+
 
 #include <SD.h>
   const int chipSelect = 9; //The CARD_SC pin on the sparkfun board
