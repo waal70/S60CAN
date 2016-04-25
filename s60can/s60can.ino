@@ -472,11 +472,16 @@ void setFilter()
 // 03C01428: ?
 // 01E0162A: ?
   
+ #if TARGETS80 == 0
   uint32_t masks[2] = {0xffffffff, 0xffffffff};
   uint32_t filters[6] = {0x000FFFFE, 0x01200021, 0x00000000, 0x00000000, 0x00000000, 0x00000000};
+ #else
+  uint16_t masks[2] = {0xffff, 0xffff};
+  uint16_t filters[6] = {0xFFFE, 0x0021, 0x0000, 0x0000, 0x0000, 0x0000};
+ #endif
 
   delay(10);
-  mcp2515_setHWFilter(masks,2, filters, 6);
+    mcp2515_setHWFilter(masks,2, filters, 6);
   delay(10);
 
 
