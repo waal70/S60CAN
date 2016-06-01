@@ -46,7 +46,7 @@
 #define KEEPALIVE
 #define LOOPBACKMODE   1
 // Set this to 1 if the target is a non-EID S80
-#define TARGETS80      0
+#define TARGETS80      1
 
 // This enables using the apparatus as an indepent DPF temp monitor 
 //  the original goal for making this :)
