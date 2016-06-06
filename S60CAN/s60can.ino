@@ -47,7 +47,7 @@
 // Set this to 1 if the target is a non-EID S80
 #define TARGETS60      0
 
-// This enables using the apparatus as an indepent DPF temp monitor 
+// This enables using the apparatus as an independent DPF temp monitor
 //  the original goal for making this :)
 #define DPFMONITOR
 
