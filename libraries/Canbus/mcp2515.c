@@ -148,9 +148,13 @@ uint8_t mcp2515_init(uint8_t speed)
 {
 	
 	uint8_t result;
+	//char msg[32];
+	//sprintf(msg,"speed: %02x |", (uint8_t)(speed) );
+	//printf(msg);
 	mcp2515_reset();
+	//set config mode
 	result = mcp2515_setCANCTRL_Mode(MODE_CONFIG);
-	if (result > 0)
+	if (result >0)
 		return result;
 		
 	uint8_t set, cfg1, cfg2, cfg3;
@@ -159,17 +163,17 @@ uint8_t mcp2515_init(uint8_t speed)
 	
 	switch (speed)
 	{
-		case (125000): //7=125 kbps
+		case (7): //7=125 kbps
 			cfg1 = MCP_16MHz_125kBPS_CFG1;
 			cfg2 = MCP_16MHz_125kBPS_CFG2;
 			cfg3 = MCP_16MHz_125kBPS_CFG3;
 			break;
-		case (250000):
+		case (3):
 			cfg1 = MCP_16MHz_250kBPS_CFG1;
 			cfg2 = MCP_16MHz_250kBPS_CFG2;
 			cfg3 = MCP_16MHz_250kBPS_CFG3;
 			break;
-		case (500000):
+		case (1):
 			cfg1 = MCP_16MHz_500kBPS_CFG1;
 			cfg2 = MCP_16MHz_500kBPS_CFG2;
 			cfg3 = MCP_16MHz_500kBPS_CFG3;
@@ -248,7 +252,6 @@ uint8_t split_canbus_id(uint8_t requestedPart, uint32_t canbus_id) {
 		break;
 	}
 }
-#if TARGETS80 == 0
 // ----------------------------------------------------------------------------
 // Utility to set the mask and filter in the appropriate registers 
 void mcp2515_setHWFilter(uint32_t masks[], int len_mask, uint32_t data_ids[], int len_data) {
@@ -314,67 +317,6 @@ void mcp2515_setHWFilter(uint32_t masks[], int len_mask, uint32_t data_ids[], in
 		mcp2515_write_register(RXB1CTRL, (1<<RXM1)|(1<<RXM0)); //disable second filter
 	
 }
-#else
-// ----------------------------------------------------------------------------
-// S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80
-void mcp2515_setHWFilter(uint16_t masks[], int len_mask, uint16_t data_ids[], int len_data) {
-  
-  //Assume the mask and the id come in the following format:
-  // 0x01234567
-  //    if ((message->id & 0xffff0000) == 0x00800000)
-  // Also, there can only  be mask0 and mask1 (2)
-  //  There can only be filter0,1,2,3,4,5 (6)
-  // Acceptance filters RXF0 and RXF1 (and
-  //	filter mask RXM0) are associated with RXB0. Filters
-  //	RXF2, RXF3, RXF4, RXF5 and mask RXM1 are
-  //	associated with RXB1.
-  //
-  //
-  
-  if (len_mask > 2)
-	len_mask = 2;
-  if (len_data > 6)
-	len_data = 6;
-  //if ((len_mask =< 0) | (len_data =< 0))
-	
-	//need to quit
-  // First, set the mask(s):
-  int i=0;
-  for (i=0; i<len_mask; i++)
-	{
-		  int j = i*4;
-		  mcp2515_write_register(RXM0SIDH + j, masks[i]);
-	}
-	
-  // Now the filters:
-  int fc=0;
-  for (i=0; i<len_data; i++)
-	{
-		if (i>=3)
-		 fc = 4; //extra correcting for moving from filter 2 to filter 3
-		int j = fc + (i*4);
-		mcp2515_write_register(RXF0SIDH + j, data_ids[i]);
-	}
-  //A note on filters:
-  //RXM<1:0>: Receive Buffer Operating mode bits 6-5
-	//11 = Turn mask/filters off; receive any message
-	//10 = Receive only valid messages with extended identifiers that meet filter criteria
-	//01 = Receive only valid messages with standard identifiers that meet filter criteria. Extended ID filter
-	//		registers RXFnEID8:RXFnEID0 are ignored for the messages with standard IDs.
-	//00 = Receive all valid messages using either standard or extended identifiers that meet filter criteria.
-	//		Extended ID filter registers RXFnEID8:RXFnEID0 are applied to first two bytes of data in the
-	//		messages with standard IDs.
-  
-  //this enables filtering. Use 1<< to disable filters
-  //Enable filter for buffer 0:
-	mcp2515_write_register(RXB0CTRL, (0<<RXM1)|(0<<RXM0));
-	if (len_mask == 2)
-		mcp2515_write_register(RXB1CTRL, (0<<RXM1)|(0<<RXM0));
-	else
-		mcp2515_write_register(RXB1CTRL, (1<<RXM1)|(1<<RXM0)); //disable second filter
-	
-}
-#endif
 
 // ----------------------------------------------------------------------------
 // check if there are any new messages waiting
@@ -529,9 +471,7 @@ uint8_t mcp2515_send_message(tCAN *message)
 	
 	return address;
 }
-#if TARGETS80 == 0
-////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////
+
 uint8_t mcp2515_send_message_J1939(tCAN *message)
 {
 	uint8_t status = mcp2515_read_status(SPI_READ_STATUS);
@@ -605,72 +545,4 @@ uint8_t mcp2515_send_message_J1939(tCAN *message)
 	
 	return address;
 }
-#else
-////////////////////S80-version starts here ///////////////////////////////////
-/////////
-///////////////////////////////////////////////////////////////////////////////
-
-uint8_t mcp2515_send_message_J1939(tCAN *message)
-{
-	// Status des MCP2515 auslesen
-	uint8_t status = mcp2515_read_status(SPI_READ_STATUS);
-	
-	/* Statusbyte:
-	 *
-	 * Bit	Funktion
-	 *  2	TXB0CNTRL.TXREQ
-	 *  4	TXB1CNTRL.TXREQ
-	 *  6	TXB2CNTRL.TXREQ
-	 */
-	uint8_t address;
-	if (_bit_is_clear(status, 2)) {
-		address = 0x00;
-	}
-	else if (_bit_is_clear(status, 4)) {
-		address = 0x02;
-	} 
-	else if (_bit_is_clear(status, 6)) {
-		address = 0x04;
-	}
-	else {
-		// All buffers are full
-		// Cannot send message:
-		return 0;
-	}
-	
-	RESET(MCP2515_CS);
-	spi_putc(SPI_WRITE_TX | address);
-	mcp2515_write_id(&message->id);
-
-	uint8_t length = message->header.length & 0x0f;
-	
-	// Is it a "Remote Transmit Request" ?
-	if (message->header.rtr)
-	{
-		spi_putc((1<<RTR) | length);
-	}
-	else
-	{
-		// Set message length
-		spi_putc(length);
-		
-		// Data
-		for (uint8_t i=0;i<length;i++) {
-			spi_putc(message->data[i]);
-		}
-	}
-	SET(MCP2515_CS);
-	
-	_delay_us(1);
-	
-	// Send CAN message
-	// Last 3 bits in RTS show which buffer is used to send
-	RESET(MCP2515_CS);
-	address = (address == 0) ? 1 : address;
-	spi_putc(SPI_RTS | address);
-	SET(MCP2515_CS);
-
-	return address;
-}
-#endif	
 

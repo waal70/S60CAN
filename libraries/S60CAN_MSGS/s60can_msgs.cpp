@@ -22,16 +22,33 @@
 ** 09-09-2015: Implemented oil and boost pressure readings
 **
 */
-#if TARGETS80 == 0
 #include <Arduino.h>
 #include <mcp2515.h>
 #include "s60can.h"
 
 #define KEEPALIVE_MSG 0
+<<<<<<< HEAD
 #define DPF_MSG 0x0196
 #define EGR_MSG 0x002C
+#define S80_OIL_MSG 0x00ED
+#define S80_COOLANT_MSG 0x00ED
 #define OIL_MSG 0x00ED
 #define BOOST_MSG 0x0176
+=======
+#define DPF_MSG 0xF405
+#define EGR_MSG 0xD904
+#define OIL_MSG 0xD9DC
+#define BOOST_MSG 0xD9E4
+
+
+//14:28:01,499 [J2534ChannelMana][021][VehCom]  --->  (0) 00,0F,FF,FE,CD,11,A6,01,96,01,00,00,
+//                                                        000ffffe diag id, cd11, a6: 0196----------- -------------------------
+// MESSAGE: Message 'A6019601' 
+//14:28:01,499 [J2534ChannelMana][021][VehCom]  --->  (0) 00,00,07,??,E0,22,D9,DC,0D,33,00,00,
+//patrick:   
+// MESSAGE: 22D9DC
+// RESPONSE: 62D9DC0D33
+>>>>>>> 7e07869... ff
 
     int LOOPBACKMODE = 0;
     unsigned long last_keepalive_msg;
@@ -83,9 +100,10 @@ int isDPFMessage(tCAN * message) {
   // DPF-return message contains: CE 11 E6 01 96 xx yy 00. 11 E6 01 96 are relevant
   //loopback testing:
   if (LOOPBACKMODE)
-      return ((message->data[1] == 0x11) && (message->data[2] == 0xA6) && (message->data[3] == 0x01) && (message->data[4] == 0x96));
+      return ((message->data[1] == 0xF4) && (message->data[2] == 0x05)); // && (message->data[3] == 0x01) && (message->data[4] == 0x76));
   else
-      return ((message->data[1] == 0x11) && (message->data[2] == 0xE6) && (message->data[3] == 0x01) && (message->data[4] == 0x96));
+      return ((message->data[1] == 0xF4) && (message->data[2] == 0x05) && (message->data[3] == 0x62)); // && (message->data[4] == 0x76));
+
 
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -96,22 +114,51 @@ int isEGRMessage(tCAN * message) {
   // DPF-return message contains: CE 11 E6 01 96 xx yy 00. 11 E6 01 96 are relevant
   //loopback testing:
   if (LOOPBACKMODE)
-      return ((message->data[1] == 0x11) && (message->data[2] == 0xA6) && (message->data[3] == 0x00) && (message->data[4] == 0x2C));
+      return ((message->data[1] == 0xD9) && (message->data[2] == 0x04)); // && (message->data[3] == 0x00) && (message->data[4] == 0x2C));
   else
-      return ((message->data[1] == 0x11) && (message->data[2] == 0xE6) && (message->data[3] == 0x00) && (message->data[4] == 0x2C));
+      return ((message->data[1] == 0xD9) && (message->data[2] == 0x04) && (message->data[0] == 0x62)); // && (message->data[4] == 0x2C));
 
 }
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// 1 = succes, 0 = fail
+int isS80CoolantMessage(tCAN * message) {
+
+  // Ignore canid. Different cars may send different diagnostic id's
+  // Coolant temperature-return message for S80 contains: CE 11 E6 00 ED xx yy 00. 11 E6 00 ED are relevant
+  //loopback testing:
+  if (LOOPBACKMODE)
+      return ((message->data[1] == 0x11) && (message->data[2] == 0xA6) && (message->data[3] == 0x00) && (message->data[4] == 0xED));
+  else
+      return ((message->data[1] == 0x11) && (message->data[2] == 0xE6) && (message->data[3] == 0x00) && (message->data[4] == 0xED));
+
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// 1 = succes, 0 = fail
+int isS80OILMessage(tCAN * message) {
+
+  // Ignore canid. Different cars may send different diagnostic id's
+  // OIL temperature-return message for S80 contains: CE 11 E6 00 ED xx yy 00. 11 E6 00 ED are relevant
+  //loopback testing:
+  if (LOOPBACKMODE)
+      return ((message->data[1] == 0x11) && (message->data[2] == 0xA6) && (message->data[3] == 0x00) && (message->data[4] == 0xED));
+  else
+      return ((message->data[1] == 0x11) && (message->data[2] == 0xE6) && (message->data[3] == 0x00) && (message->data[4] == 0xED));
+
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // 1 = succes, 0 = fail
 int isOILMessage(tCAN * message) {
 
   // Ignore canid. Different cars may send different diagnostic id's
   // DPF-return message contains: CE 11 E6 00 ED xx yy 00. 11 E6 00 ED are relevant
+  // OIL-return message contains: 62 D9 DC 0D 33
   //loopback testing:
   if (LOOPBACKMODE)
-      return ((message->data[1] == 0x11) && (message->data[2] == 0xA6) && (message->data[3] == 0x00) && (message->data[4] == 0xED));
+      return ((message->data[1] == 0xD9) && (message->data[2] == 0xDC)); // && (message->data[0] == 0x62) && (message->data[4] == 0xD9));
   else
-      return ((message->data[1] == 0x11) && (message->data[2] == 0xE6) && (message->data[3] == 0x00) && (message->data[4] == 0xED));
+      return ((message->data[1] == 0xD9) && (message->data[2] == 0xDC)  && (message->data[0] == 0x62)); // && (message->data[4] == 0xD9));
 
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -120,11 +167,12 @@ int isBOOSTMessage(tCAN * message) {
 
   // Ignore canid. Different cars may send different diagnostic id's
   // DPF-return message contains: CE 11 E6 01 76 xx yy 00. 11 E6 01 76 are relevant
+  // COOLANT at Patrick
   //loopback testing:
   if (LOOPBACKMODE)
-      return ((message->data[1] == 0x11) && (message->data[2] == 0xA6) && (message->data[3] == 0x01) && (message->data[4] == 0x76));
+      return ((message->data[1] == 0xD9) && (message->data[2] == 0xE4)); // && (message->data[3] == 0x01) && (message->data[4] == 0x76));
   else
-      return ((message->data[1] == 0x11) && (message->data[2] == 0xE6) && (message->data[3] == 0x01) && (message->data[4] == 0x76));
+      return ((message->data[1] == 0xD9) && (message->data[2] == 0xE4)  && (message->data[0] == 0x62)); // && (message->data[4] == 0x76));
 
 }
  
@@ -140,7 +188,7 @@ tCAN construct_CAN_msg(int msgType) {
       message.header.rtr = 0;
       message.header.eid = 1;
       message.header.length = 8;
-      message.id = 0x000ffffe;
+      message.id = 0x000007e0;
       message.data[0] = 0xd8;
       for (int i=1;i<8;i++)
         message.data[i] = 0x00;  
@@ -150,18 +198,18 @@ tCAN construct_CAN_msg(int msgType) {
       message.header.rtr = 0;
       message.header.eid = 1;
       message.header.length = 8;
-      message.id = 0x000ffffe; //default diagnostic id
-      message.data[0] = 0xCD;  
-      message.data[1] = 0x11;
-      message.data[2] = 0xA6;
-      message.data[3] = 0x01;
-      message.data[4] = 0x96;
-      message.data[5] = 0x01;
+      message.id = 0x000007e0; //default diagnostic id
+      message.data[0] = 0x22;  
+      message.data[1] = 0xF4;
+      message.data[2] = 0x05;
+      message.data[3] = 0x00;
+      message.data[4] = 0x00;
+      message.data[5] = 0x00;
       message.data[6] = 0x00;
       //for loopback testing:
       if (LOOPBACKMODE) {
-        message.data[5] = 0x0F;
-        message.data[6] = 0xD9; // OBD4 = temp of 29.6, 58CB = temp of 2000
+        message.data[3] = 0x61;
+        message.data[4] = 0x00; // 61 = 56 graden
         } 
       message.data[7] = 0x00;
       return message;
@@ -170,23 +218,43 @@ tCAN construct_CAN_msg(int msgType) {
       message.header.rtr = 0;
       message.header.eid = 1;
       message.header.length = 8;
+      message.id = 0x000007e0; //default diagnostic id
+      message.data[0] = 0x22;  
+      message.data[1] = 0xD9;
+      message.data[2] = 0x04;
+      message.data[3] = 0x00;
+      message.data[4] = 0x00;
+      message.data[5] = 0x00;
+      message.data[6] = 0x00;
+      //for loopback testing:
+      if (LOOPBACKMODE) {
+        message.data[3] = 0x0E;
+        message.data[4] = 0x39; // 15DB = percentage of 67.%, 2000 = 100%
+        } 
+      message.data[7] = 0x00;
+      return message;
+    break;
+    case (S80_COOLANT_MSG):
+      message.header.rtr = 0;
+      message.header.eid = 1;
+      message.header.length = 8;
       message.id = 0x000ffffe; //default diagnostic id
       message.data[0] = 0xCD;  
       message.data[1] = 0x11;
       message.data[2] = 0xA6;
       message.data[3] = 0x00;
-      message.data[4] = 0x2C;
+      message.data[4] = 0xED;
       message.data[5] = 0x01;
       message.data[6] = 0x00;
       //for loopback testing:
       if (LOOPBACKMODE) {
-        message.data[5] = 0x20;
-        message.data[6] = 0x00; // 15DB = percentage of 67.%, 2000 = 100%
+        message.data[5] = 0x0E;
+        message.data[6] = 0x3C; // 0E3C = 91.66 degrees C, 0E39 = 90.96
         } 
       message.data[7] = 0x00;
       return message;
-    break;
-    case (OIL_MSG):
+    break;   
+    case (S80_OIL_MSG):
       message.header.rtr = 0;
       message.header.eid = 1;
       message.header.length = 8;
@@ -206,22 +274,43 @@ tCAN construct_CAN_msg(int msgType) {
       message.data[7] = 0x00;
       return message;
     break;
+    case (OIL_MSG):
+      message.header.rtr = 0;
+      message.header.eid = 1;
+      message.header.length = 8;
+      //00,00,07,E0
+      message.id = 0x000007e0; //default diagnostic id
+      message.data[0] = 0x22;  
+      message.data[1] = 0xD9;
+      message.data[2] = 0xDC;
+      message.data[3] = 0x00;
+      message.data[4] = 0x00;
+      message.data[5] = 0x00;
+      message.data[6] = 0x00;
+      //for loopback testing:
+      if (LOOPBACKMODE) {
+        message.data[3] = 0x0E;
+        message.data[4] = 0x3C; // 0E3C = 91.66 degrees C, 0E39 = 90.96
+        } 
+      message.data[7] = 0x00;
+      return message;
+    break;
     case (BOOST_MSG):
       message.header.rtr = 0;
       message.header.eid = 1;
       message.header.length = 8;
-      message.id = 0x000ffffe; //default diagnostic id
-      message.data[0] = 0xCD;  
-      message.data[1] = 0x11;
-      message.data[2] = 0xA6;
-      message.data[3] = 0x01;
-      message.data[4] = 0x76;
-      message.data[5] = 0x01;
+      message.id = 0x000007e0; //default diagnostic id
+      message.data[0] = 0x22;  
+      message.data[1] = 0xD9;
+      message.data[2] = 0xE4;
+      message.data[3] = 0x00;
+      message.data[4] = 0x00;
+      message.data[5] = 0x00;
       message.data[6] = 0x00;
       //for loopback testing:
       if (LOOPBACKMODE) {
-        message.data[5] = 0x04;
-        message.data[6] = 0x09; // 0409 = 1033 hPa, 040D = 1037 hPa
+        message.data[4] = 0x04;
+        message.data[5] = 0x07; // 61 = 56 graden
         } 
       message.data[7] = 0x00;
       return message;
@@ -278,5 +367,4 @@ tCAN sendMessage;
 
 
 }
-#endif
 

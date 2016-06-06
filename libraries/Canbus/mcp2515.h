@@ -34,42 +34,14 @@ extern "C"
 // ----------------------------------------------------------------------------
 typedef struct
 {
-	#if TARGETS80 == 0	
-		uint32_t id;				//!< ID der Nachricht (29 Bit)
-		struct {
-			int rtr : 1;			//!< Remote-Transmit-Request-Frame?
-			uint8_t length : 4;		//!< Anzahl der Datenbytes
-			int eid : 1;			//!< extended ID?
-		} header;
-	#else
-		uint16_t id;				//!< ID der Nachricht (11 Bit)
-		struct {
-			int rtr : 1;			//!< Remote-Transmit-Request-Frame?
-			uint8_t length : 4;		//!< Anzahl der Datenbytes
-		} header;
-	#endif
-	
-	uint8_t data[8];			//!< Die Daten der CAN Nachricht
-	
+	uint32_t id;
+	struct {
+		int8_t rtr : 1;
+		uint8_t length : 4;
+		int8_t eid : 1;
+	} header;
+	uint8_t data[8];
 } tCAN;
-
-typedef struct
-{
-	#if	TARGETS80 == 0
-		uint32_t id;				//!< ID der Nachricht (11 oder 29 Bit)
-		uint32_t mask;				//!< Maske
-		struct {
-			uint8_t rtr : 2;		//!< Remote Request Frame
-			uint8_t eid : 2;	//!< extended ID
-		} header;
-	#else
-		uint16_t id;				//!< ID der Nachricht 11 Bits
-		uint16_t mask;				//!< Maske
-			struct {
-			uint8_t rtr : 2;		//!< Remote Request Frame
-		} header;
-	#endif
-} tCANFILTER;
 
 // ----------------------------------------------------------------------------
 uint8_t spi_putc( uint8_t data );
@@ -80,13 +52,8 @@ void mcp2515_write_register( uint8_t adress, uint8_t data );
 // ----------------------------------------------------------------------------
 uint8_t split_canbus_id(uint8_t requestedPart, uint32_t canbus_id);
 // ----------------------------------------------------------------------------
-#if TARGETS80 == 0
 void mcp2515_setHWFilter(uint32_t masks[], int len_mask, uint32_t data_ids[], int len_data);
 // ----------------------------------------------------------------------------
-#else
-void mcp2515_setHWFilter(uint16_t masks[], int len_mask, uint16_t data_ids[], int len_data);
-// ----------------------------------------------------------------------------
-#endif
 uint8_t mcp2515_read_register(uint8_t adress);
 // ----------------------------------------------------------------------------
 void mcp2515_bit_modify(uint8_t adress, uint8_t mask, uint8_t data);

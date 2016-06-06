@@ -55,7 +55,7 @@ int send_CAN_msg(tCAN * msg);
 void set_keepalive_timeout( unsigned long timeout );
 int init_module( unsigned long baudrate );
 int is_in_normal_mode();
-void get_operation_mode();
+unsigned int get_operation_mode();
 
 int switch_mode( unsigned int mode);
 
