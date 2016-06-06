@@ -24,14 +24,12 @@
 */
 
 #include "usbcan.h"
-#include "s60can.h"
+#include "../../s60can/s60can.h"
 
 void init_keepalive(int blnLBM);
 void init_monitoring(int blnLBM);
 int isEGRMessage(tCAN * message);
 int isDPFMessage(tCAN * message);
-int isS80CoolantMessage(tCAN * message);
-int isS80OILMessage(tCAN * message);
 int isOILMessage(tCAN * message);
 int isBOOSTMessage(tCAN * message);
 void checksend_CAN_msgs();

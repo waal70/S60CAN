@@ -1,6 +1,6 @@
 /**
  * 
- *
+ * Copyright (c) 2015 André de Waal - revamped for S60CAN
  * Copyright (c) 2008-2009  All rights reserved.
  */
 
@@ -10,20 +10,19 @@
 #include <Wprogram.h> // Arduino 0022
 #endif
 #include <stdint.h>
-#include <avr/pgmspace.h>
 
 #include <stdio.h>
-#include <avr/io.h>
-#include <avr/interrupt.h>
-#include <util/delay.h>
-#include "pins_arduino.h"
 #include <inttypes.h>
-#include "global.h"
 #include "mcp2515.h"
-#include "defaults.h"
 #include "Canbus.h"
 
 
+// ONE_SHOT_MODE tries to send message only once even if error occurs during transmit.  (see MCP2515 data sheet)
+// If we are testing the Sardine CAN without any other CAN device on the network, then there will be no ACK signals acknowledging that
+// transmit succeeded and thus sending fails. If this happens, MCP2515 will keep on sending the message forever and transmit buffers will eventually
+// fill up. Also cheap ELM327 clones (with older firmware) do not support ACK-signaling, so a network consisting of MCP2515 + ELM327 does not work
+// if ONE_SHOT_MODE is not enabled. You should however disable this when connecting Sardine CAN to a car
+//#define ONE_SHOT_MODE
 
 
 /* C++ wrapper */
@@ -31,163 +30,82 @@ CanbusClass::CanbusClass() {
 
  
 }
-char CanbusClass::message_rx(unsigned char *buffer) {
-		tCAN message;
-	
-		if (mcp2515_check_message()) {
+
+char CanbusClass::init(unsigned long speed) {
+
+  //check if init succesful
+  if (isSupportedBaudrate(speed)) {
+	if (mcp2515_init(speed))
+		{
+			// we need to be in config mode by default, before opening the channel
+			setMode(MODE_CONFIG);
 		
+			// don't require interrupts from successful send
+			mcp2515_bit_modify(CANINTE, (1<<TX0IE), 0);
 			
-			// Lese die Nachricht aus dem Puffern des MCP2515
-			if (mcp2515_get_message(&message)) {
-			//	print_can_message(&message);
-			//	PRINT("\n");
-				buffer[0] = message.data[0];
-				buffer[1] = message.data[1];
-				buffer[2] = message.data[2];
-				buffer[3] = message.data[3];
-				buffer[4] = message.data[4];
-				buffer[5] = message.data[5];
-				buffer[6] = message.data[6];
-				buffer[7] = message.data[7];								
-//				buffer[] = message[];
-//				buffer[] = message[];
-//				buffer[] = message[];
-//				buffer[] = message[];																												
-			}
-			else {
-			//	PRINT("Kann die Nachricht nicht auslesen\n\n");
-			}
+			// enable one-shot mode, if needed. By default: off (connected to car)
+			#ifdef ONE_SHOT_MODE
+				mcp2515_bit_modify(CANCTRL, (1<<OSM), (1<<OSM));
+			#else
+				mcp2515_bit_modify(CANCTRL, (1<<OSM), 0);
+			#endif
+			// roll-over: receiving message will be moved to receive buffer 1 if buffer 0 is full
+			mcp2515_bit_modify(RXB0CTRL, (1<<BUKT), (1<<BUKT));
+			return 1;
 		}
-
-}
-
-char CanbusClass::message_tx(void) {
-	tCAN message;
-
-
-	// einige Testwerte
-	message.id = 0x7DF;
-	message.header.rtr = 0;
-	message.header.length = 8;
-	message.data[0] = 0x02;
-	message.data[1] = 0x01;
-	message.data[2] = 0x05;
-	message.data[3] = 0x00;
-	message.data[4] = 0x00;
-	message.data[5] = 0x00;
-	message.data[6] = 0x00;
-	message.data[7] = 0x00;						
-	
-	
-	
-	
-//	mcp2515_bit_modify(CANCTRL, (1<<REQOP2)|(1<<REQOP1)|(1<<REQOP0), (1<<REQOP1));	
-		mcp2515_bit_modify(CANCTRL, (1<<REQOP2)|(1<<REQOP1)|(1<<REQOP0), 0);
-		
-	if (mcp2515_send_message(&message)) {
-		//	SET(LED2_HIGH);
-		return 1;
-	
+	else 
+		return 0;
 	}
-	else {
-	//	PRINT("Fehler: konnte die Nachricht nicht auslesen\n\n");
+  else
 	return 0;
-	}
-return 1;
  
 }
+///////////////////////////////////////////////////////////////////////////////////
+// returns 1 on succes, 0 on failure
+char CanbusClass::setMode(unsigned int mode) {
+	mcp2515_setCANCTRL_Mode((uint8_t)mode);
+}
+///////////////////////////////////////////////////////////////////////////////////
+char CanbusClass::getMode() {
+	return mcp2515_read_register(CANCTRL);
+}
 
-char CanbusClass::ecu_req(unsigned char pid,  char *buffer) 
-{
-	tCAN message;
-	float engine_data;
-	int timeout = 0;
-	char message_ok = 0;
-	// Prepair message
-	message.id = PID_REQUEST;
-	message.header.rtr = 0;
-	message.header.length = 8;
-	message.data[0] = 0x02;
-	message.data[1] = 0x01;
-	message.data[2] = pid;
-	message.data[3] = 0x00;
-	message.data[4] = 0x00;
-	message.data[5] = 0x00;
-	message.data[6] = 0x00;
-	message.data[7] = 0x00;						
-	
+///////////////////////////////////////////////////////////////////////////////////
+char* CanbusClass::getDisplayFilter() {
+	//3 because I am returning an asterisk and one null character
+	char* result = (char*) malloc(2);
+    //WARNING: this only works if we are setting filter mode to either
+    // 11 or 00. This will incorrectly interpret intermediate settings!
+    uint8_t fltr = mcp2515_read_register(RXB0CTRL);
+    if (!((fltr & 0x60) == 0x60))
+      result = "*";
+	return result;
+        //one of the two bits is zero. Because of the above
+        // assumption, both bits are zero. Therefore, filter is set.
+}
+///////////////////////////////////////////////////////////////////////////////////
+// returns 1 on succes, 0 on failure
+char CanbusClass::isSupportedBaudrate(unsigned long speed) {
 
-	mcp2515_bit_modify(CANCTRL, (1<<REQOP2)|(1<<REQOP1)|(1<<REQOP0), 0);
-//		SET(LED2_HIGH);	
-	if (mcp2515_send_message(&message)) {
-	}
-	
-	while(timeout < 4000)
+//Currently support 125000, 250000 and 500000
+
+	switch (speed)
 	{
-		timeout++;
-				if (mcp2515_check_message()) 
-				{
-
-					if (mcp2515_get_message(&message)) 
-					{
-							if((message.id == PID_REPLY) && (message.data[2] == pid))	// Check message is the reply and its the right PID
-							{
-								switch(message.data[2])
-								{   /* Details from http://en.wikipedia.org/wiki/OBD-II_PIDs */
-									case ENGINE_RPM:  			//   ((A*256)+B)/4    [RPM]
-									engine_data =  ((message.data[3]*256) + message.data[4])/4;
-									sprintf(buffer,"%d rpm ",(int) engine_data);
-									break;
-							
-									case ENGINE_COOLANT_TEMP: 	// 	A-40			  [degree C]
-									engine_data =  message.data[3] - 40;
-									sprintf(buffer,"%d degC",(int) engine_data);
-							
-									break;
-							
-									case VEHICLE_SPEED: 		// A				  [km]
-									engine_data =  message.data[3];
-									sprintf(buffer,"%d km ",(int) engine_data);
-							
-									break;
-
-									case MAF_SENSOR:   			// ((256*A)+B) / 100  [g/s]
-									engine_data =  ((message.data[3]*256) + message.data[4])/100;
-									sprintf(buffer,"%d g/s",(int) engine_data);
-							
-									break;
-
-									case O2_VOLTAGE:    		// A * 0.005   (B-128) * 100/128 (if B==0xFF, sensor is not used in trim calc)
-									engine_data = message.data[3]*0.005;
-									sprintf(buffer,"%d v",(int) engine_data);
-							
-									case THROTTLE:				// Throttle Position
-									engine_data = (message.data[3]*100)/255;
-									sprintf(buffer,"%d %% ",(int) engine_data);
-									break;
-							
-								}
-								message_ok = 1;
-							}
-
-					}
-				}
-				if(message_ok == 1) return 1;
+		case 125000:
+			return 1;
+			break;
+		case 250000:
+			return 1;
+			break;
+		case 500000:
+			return 1;
+			break;
+		default:
+			return 0;
+			break;
 	}
-
-
- 	return 0;
+	return 0;
 }
 
-
-
-
-
-
-char CanbusClass::init(unsigned char speed) {
-
-  return mcp2515_init(speed);
- 
-}
 
 CanbusClass Canbus;

@@ -35,7 +35,10 @@
  E:\CODE\ArduinoCode\libraries\LiquidCrystal_I2C/LCD.h \
  E:\CODE\ArduinoCode\libraries\S80CAN_MSGS/s80can_msgs.h \
  E:\CODE\ArduinoCode\libraries\usbcan/usbcan.h \
- E:\CODE\ArduinoCode\libraries\S60CAN_MSGS/s60can_msgs.h ../S60CAN.ino
+ E:\CODE\ArduinoCode\libraries\S80CAN_MSGS/../../s60can/s60can.h \
+ E:\CODE\ArduinoCode\libraries\S60CAN_MSGS/s60can_msgs.h \
+ E:\CODE\ArduinoCode\libraries\S60CAN_MSGS/../../s60can/s60can.h \
+ ../S60CAN.ino
 
 D:\Andre\eclipse\arduinoPlugin\packages\arduino\hardware\avr\1.6.11\cores\arduino/Arduino.h:
 
@@ -109,6 +112,10 @@ E:\CODE\ArduinoCode\libraries\S80CAN_MSGS/s80can_msgs.h:
 
 E:\CODE\ArduinoCode\libraries\usbcan/usbcan.h:
 
+E:\CODE\ArduinoCode\libraries\S80CAN_MSGS/../../s60can/s60can.h:
+
 E:\CODE\ArduinoCode\libraries\S60CAN_MSGS/s60can_msgs.h:
+
+E:\CODE\ArduinoCode\libraries\S60CAN_MSGS/../../s60can/s60can.h:
 
 ../S60CAN.ino:
