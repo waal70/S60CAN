@@ -1,0 +1,13 @@
+14:28:01,889 [DiagConnection  ][021][VehCom]  VehComm request: Ecu '11', Message 'A6019601' 
+14:28:01,889 [J2534ChannelMana][021][VehCom]  PassThruWriteMsgs(9, PASSTHRU_MSG, 1, 2000) - ParameterReadThread ->DiCE-210973<-
+14:28:01,889 [J2534ChannelMana][021][VehCom]  --->	(0) 00,0F,FF,FE,CD,11,A6,01,96,01,00,00,
+14:28:01,889 [J2534ChannelMana][021][VehCom]  PassThruReadMsgs(9, PASSTHRU_MSG, 1, 100 ) - ParameterReadThread ->DiCE-210973<-
+14:28:01,905 [J2534ChannelMana][021][VehCom]  <---	(0) 01,20,00,21,CE,11,E6,01,96,0B,D4,00,
+14:28:01,905 [DiagConnection  ][021][VehCom]  VehComm response: 'E601960BD4'
+======================================================================================================================================
+11:30:20,762 [DiagConnection  ][016][VehCom]  VehComm request: Ecu '7E0', Message '22D9DC' 
+11:30:20,764 [J2534ChannelMana][016][VehCom]  PassThruWriteMsgs(3, PASSTHRU_MSG, 1, 5000) - ParameterReadThread ->DiCE-210973<-
+11:30:20,768 [J2534ChannelMana][016][VehCom]  --->	(0) 00,00,07,E0,22,D9,DC,
+11:30:20,768 [J2534ChannelMana][016][VehCom]  PassThruReadMsgs(3, PASSTHRU_MSG, 1, 1025 ) - ParameterReadThread ->DiCE-210973<-
+11:30:20,778 [J2534ChannelMana][016][VehCom]  <---	(0) 00,00,07,E8,62,D9,DC,0D,33,
+11:30:20,778 [DiagConnection  ][016][VehCom]  VehComm response: '62D9DC0D33'

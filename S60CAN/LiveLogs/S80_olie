@@ -1,0 +1,136 @@
+S80 2007 Patrick
+Samenvatting:
+===================================OIL:
+ID=0x07e0
+Payload: 0x03, 0x22, 0xD9, 0xDC, 0x00, 0x00, 0x00, 0x00
+Response:
+ID=0x07e8
+Payload: 0x05, 0x62, 0xD9, 0xDC, 0x0D, 0x33, 0x00, 0x00
+===================================KVL:
+ID=0x07e0
+Payload: 0x03, 0x22, 0xF4, 0x05, 0x00, 0x00, 0x00, 0x00
+Response:
+ID=0x07e8
+Payload: 0x04, 0x62, 0xF4, 0x05, 0x61, 0x00, 0x00, 0x00
+===================================BOOST:
+'7E0', Message '22D9E4' 
+ID=0x07e0
+Payload: 0x03, 0x22, 0xD9, 0xE4, 0x00, 0x00, 0x00, 0x00
+Response:
+ID=0x07e8
+Payload: 0x05, 0x62, 0xD9, 0xE4, 0x04, 0x07, 0x00, 0x00
+===================================TRANSMISSION:
+ID=0x07e
+Payload: 0x03, 0x22, 0xD9, 0x04, 0x00, 0x00, 0x00, 0x00
+Response:
+ID=0x07e8
+Payload: 0x05, 0x62, 0xD9, 0x04, 0x0D, 0x33, 0x00, 0x00
+
+
+Olietemperatuur:
+VehComm response: '62D9DC0D33'
+11:30:25,901 [DiagConnection  ][016][VehCom]  VehComm request: Ecu '7E0', Message '22D9DC' 
+11:30:25,903 [J2534ChannelMana][016][VehCom]  PassThruWriteMsgs(3, PASSTHRU_MSG, 1, 5000) - ParameterReadThread ->DiCE-210973<-
+11:30:25,907 [J2534ChannelMana][016][VehCom]  --->	(0) 00,00,07,E0,22,D9,DC,
+11:30:25,907 [J2534ChannelMana][016][VehCom]  PassThruReadMsgs(3, PASSTHRU_MSG, 1, 1025 ) - ParameterReadThread ->DiCE-210973<-
+11:30:25,916 [J2534ChannelMana][016][VehCom]  <---	(0) 00,00,07,E8,62,D9,DC,0D,33,
+11:30:25,916 [DiagConnection  ][016][VehCom]  VehComm response: '62D9DC0D33'
+11:30:25,969 [DiagConnection  ][016][VehCom]  VehComm request: Ecu '7E0', Message '22D9DC' 
+11:30:25,971 [J2534ChannelMana][016][VehCom]  PassThruWriteMsgs(3, PASSTHRU_MSG, 1, 5000) - ParameterReadThread ->DiCE-210973<-
+11:30:25,974 [J2534ChannelMana][016][VehCom]  --->	(0) 00,00,07,E0,22,D9,DC,
+11:30:25,974 [J2534ChannelMana][016][VehCom]  PassThruReadMsgs(3, PASSTHRU_MSG, 1, 1025 ) - ParameterReadThread ->DiCE-210973<-
+11:30:25,986 [J2534ChannelMana][016][VehCom]  <---	(0) 00,00,07,E8,62,D9,DC,0D,33,
+11:30:25,986 [DiagConnection  ][016][VehCom]  VehComm response: '62D9DC0D33'
+Reconstructed oil-request:
+ID=0x07e0
+Payload: 0x03,0x22,0xD9,0xDC,0x00,0x00,0x00,0x00
+Reconstructed oil-response:
+ID=0x07e8
+Payload: 0x05,0x62,0xD9,0xDC,0x0D,0x33,0x00,0x00
+
+
+Binnentemperatuur: 10 - 11 graden (11,36)
+
+VehComm request: Ecu '733', Message '229A1B' 
+11:48:53,532 [J2534ChannelMana][00D][VehCom]  PassThruWriteMsgs(4, PASSTHRU_MSG, 1, 5000) - ParameterReadThread ->DiCE-210973<-
+11:48:53,540 [J2534ChannelMana][00D][VehCom]  --->	(0) 00,00,07,33,22,9A,1B,
+11:48:53,540 [J2534ChannelMana][00D][VehCom]  PassThruReadMsgs(4, PASSTHRU_MSG, 1, 1025 ) - ParameterReadThread ->DiCE-210973<-
+11:48:53,550 [J2534ChannelMana][00D][VehCom]  <---	(0) 00,00,07,3B,62,9A,1B,1B,CB,
+11:48:53,551 [DiagConnection  ][00D][VehCom]  VehComm response: '629A1B1BCB'
+11:48:53,602 [DiagConnection  ][00D][VehCom]  VehComm request: Ecu '733', Message '229A1B' 
+11:48:53,603 [J2534ChannelMana][00D][VehCom]  PassThruWriteMsgs(4, PASSTHRU_MSG, 1, 5000) - ParameterReadThread ->DiCE-210973<-
+11:48:53,611 [J2534ChannelMana][00D][VehCom]  --->	(0) 00,00,07,33,22,9A,1B,
+11:48:53,611 [J2534ChannelMana][00D][VehCom]  PassThruReadMsgs(4, PASSTHRU_MSG, 1, 1025 ) - ParameterReadThread ->DiCE-210973<-
+11:48:53,644 [J2534ChannelMana][00D][VehCom]  <---	(0) 00,00,07,3B,62,9A,1B,1B,CA,
+11:48:53,644 [DiagConnection  ][00D][VehCom]  VehComm response: '629A1B1BCA'
+
+Koelvloeistof: 56 graden
+VehComm response: '62F40561'
+11:51:47,597 [DiagConnection  ][00D][VehCom]  VehComm request: Ecu '7E0', Message '22F405' 
+11:51:47,599 [J2534ChannelMana][00D][VehCom]  PassThruWriteMsgs(3, PASSTHRU_MSG, 1, 5000) - ParameterReadThread ->DiCE-210973<-
+11:51:47,602 [J2534ChannelMana][00D][VehCom]  --->	(0) 00,00,07,E0,22,F4,05,
+11:51:47,603 [J2534ChannelMana][00D][VehCom]  PassThruReadMsgs(3, PASSTHRU_MSG, 1, 1025 ) - ParameterReadThread ->DiCE-210973<-
+11:51:47,619 [J2534ChannelMana][00D][VehCom]  <---	(0) 00,00,07,E8,62,F4,05,61,
+11:51:47,619 [DiagConnection  ][00D][VehCom]  VehComm response: '62F40561'
+11:51:47,673 [DiagConnection  ][00D][VehCom]  VehComm request: Ecu '7E0', Message '22F405' 
+11:51:47,674 [J2534ChannelMana][00D][VehCom]  PassThruWriteMsgs(3, PASSTHRU_MSG, 1, 5000) - ParameterReadThread ->DiCE-210973<-
+11:51:47,678 [J2534ChannelMana][00D][VehCom]  --->	(0) 00,00,07,E0,22,F4,05,
+11:51:47,678 [J2534ChannelMana][00D][VehCom]  PassThruReadMsgs(3, PASSTHRU_MSG, 1, 1025 ) - ParameterReadThread ->DiCE-210973<-
+11:51:47,684 [J2534ChannelMana][00D][VehCom]  <---	(0) 00,00,07,E8,62,F4,05,61,
+11:51:47,684 [DiagConnection  ][00D][VehCom]  VehComm response: '62F40561'
+11:51:47,735 [DiagConnection  ][00D][VehCom]  VehComm request: Ecu '7E0', Message '22F405' 
+11:51:47,737 [J2534ChannelMana][00D][VehCom]  PassThruWriteMsgs(3, PASSTHRU_MSG, 1, 5000) - ParameterReadThread ->DiCE-210973<-
+11:51:47,743 [J2534ChannelMana][00D][VehCom]  --->	(0) 00,00,07,E0,22,F4,05,
+11:51:47,743 [J2534ChannelMana][00D][VehCom]  PassThruReadMsgs(3, PASSTHRU_MSG, 1, 1025 ) - ParameterReadThread ->DiCE-210973<-
+11:51:47,749 [J2534ChannelMana][00D][VehCom]  <---	(0) 00,00,07,E8,62,F4,05,61,
+11:51:47,749 [DiagConnection  ][00D][VehCom]  VehComm response: '62F40561'
+11:51:47,803 [DiagConnection  ][00D][VehCom]  VehComm request: Ecu '7E0', Message '22F405' 
+11:51:47,805 [J2534ChannelMana][00D][VehCom]  PassThruWriteMsgs(3, PASSTHRU_MSG, 1, 5000) - ParameterReadThread ->DiCE-210973<-
+11:51:47,808 [J2534ChannelMana][00D][VehCom]  --->	(0) 00,00,07,E0,22,F4,05,
+11:51:47,809 [J2534ChannelMana][00D][VehCom]  PassThruReadMsgs(3, PASSTHRU_MSG, 1, 1025 ) - ParameterReadThread ->DiCE-210973<-
+11:51:47,814 [J2534ChannelMana][00D][VehCom]  <---	(0) 00,00,07,E8,62,F4,05,61,
+11:51:47,814 [DiagConnection  ][00D][VehCom]  VehComm response: '62F40561'
+11:51:47,868 [DiagConnection  ][00D][VehCom]  VehComm request: Ecu '7E0', Message '22F405' 
+11:51:47,870 [J2534ChannelMana][00D][VehCom]  PassThruWriteMsgs(3, PASSTHRU_MSG, 1, 5000) - ParameterReadThread ->DiCE-210973<-
+11:51:47,873 [J2534ChannelMana][00D][VehCom]  --->	(0) 00,00,07,E0,22,F4,05,
+11:51:47,873 [J2534ChannelMana][00D][VehCom]  PassThruReadMsgs(3, PASSTHRU_MSG, 1, 1025 ) - ParameterReadThread ->DiCE-210973<-
+11:51:47,885 [J2534ChannelMana][00D][VehCom]  <---	(0) 00,00,07,E8,62,F4,05,61,
+11:51:47,886 [DiagConnection  ][00D][VehCom]  VehComm response: '62F40561'
+
+Boost pressure desired: 1031hPa
+11:55:26,040 [DiagConnection  ][00D][VehCom]  VehComm response: '62D9E40407'
+11:55:26,093 [DiagConnection  ][00D][VehCom]  VehComm request: Ecu '7E0', Message '22D9E4' 
+11:55:26,095 [J2534ChannelMana][00D][VehCom]  PassThruWriteMsgs(3, PASSTHRU_MSG, 1, 5000) - ParameterReadThread ->DiCE-210973<-
+11:55:26,097 [J2534ChannelMana][00D][VehCom]  --->	(0) 00,00,07,E0,22,D9,E4,
+11:55:26,097 [J2534ChannelMana][00D][VehCom]  PassThruReadMsgs(3, PASSTHRU_MSG, 1, 1025 ) - ParameterReadThread ->DiCE-210973<-
+11:55:26,108 [J2534ChannelMana][00D][VehCom]  <---	(0) 00,00,07,E8,62,D9,E4,04,07,
+11:55:26,108 [DiagConnection  ][00D][VehCom]  VehComm response: '62D9E40407'
+11:55:26,161 [DiagConnection  ][00D][VehCom]  VehComm request: Ecu '7E0', Message '22D9E4' 
+11:55:26,164 [J2534ChannelMana][00D][VehCom]  PassThruWriteMsgs(3, PASSTHRU_MSG, 1, 5000) - ParameterReadThread ->DiCE-210973<-
+11:55:26,169 [J2534ChannelMana][00D][VehCom]  --->	(0) 00,00,07,E0,22,D9,E4,
+11:55:26,169 [J2534ChannelMana][00D][VehCom]  PassThruReadMsgs(3, PASSTHRU_MSG, 1, 1025 ) - ParameterReadThread ->DiCE-210973<-
+11:55:26,177 [J2534ChannelMana][00D][VehCom]  <---	(0) 00,00,07,E8,62,D9,E4,04,07,
+11:55:26,177 [DiagConnection  ][00D][VehCom]  VehComm response: '62D9E40407'
+
+Temperature sensor 23 graden
+11:58:07,913 [DiagConnection  ][00D][VehCom]  VehComm response: '62D9F90BAE'
+11:58:07,967 [DiagConnection  ][00D][VehCom]  VehComm request: Ecu '7E0', Message '22D9F9' 
+11:58:07,975 [J2534ChannelMana][00D][VehCom]  PassThruWriteMsgs(3, PASSTHRU_MSG, 1, 5000) - ParameterReadThread ->DiCE-210973<-
+11:58:07,978 [J2534ChannelMana][00D][VehCom]  --->	(0) 00,00,07,E0,22,D9,F9,
+11:58:07,978 [J2534ChannelMana][00D][VehCom]  PassThruReadMsgs(3, PASSTHRU_MSG, 1, 1025 ) - ParameterReadThread ->DiCE-210973<-
+11:58:07,984 [J2534ChannelMana][00D][VehCom]  <---	(0) 00,00,07,E8,62,D9,F9,0B,AE,
+11:58:07,984 [DiagConnection  ][00D][VehCom]  VehComm response: '62D9F90BAE'
+11:58:08,035 [DiagConnection  ][00D][VehCom]  VehComm request: Ecu '7E0', Message '22D9F9' 
+11:58:08,038 [J2534ChannelMana][00D][VehCom]  PassThruWriteMsgs(3, PASSTHRU_MSG, 1, 5000) - ParameterReadThread ->DiCE-210973<-
+11:58:08,043 [J2534ChannelMana][00D][VehCom]  --->	(0) 00,00,07,E0,22,D9,F9,
+11:58:08,043 [J2534ChannelMana][00D][VehCom]  PassThruReadMsgs(3, PASSTHRU_MSG, 1, 1025 ) - ParameterReadThread ->DiCE-210973<-
+11:58:08,044 [J2534ChannelMana][00D][VehCom]  <---	(0) 00,00,07,E8,62,D9,F9,0B,AE,
+11:58:08,044 [DiagConnection  ][00D][VehCom]  VehComm response: '62D9F90BAE'
+11:58:08,098 [DiagConnection  ][00D][VehCom]  VehComm request: Ecu '7E0', Message '22D9F9' 
+11:58:08,110 [J2534ChannelMana][00D][VehCom]  PassThruWriteMsgs(3, PASSTHRU_MSG, 1, 5000) - ParameterReadThread ->DiCE-210973<-
+
+Brandstofniveau: 2261D1
+
+Bakolie-temperatuur: 22D904
+
+
