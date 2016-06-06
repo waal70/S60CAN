@@ -1,9 +1,0 @@
-Thanks goes to following people from whom I've used code in this firmware:
-
-- Olaf for the basis for the Arduino program, the Lawicel interface ( http://hackingvolvo.blogspot.com )
-- Michael Wolf for the Lawicel CANUSB compatible USB<>CAN bus interface ( http://www.mictronics.de/projects/usb-can-bus/ )
-- Fabian Greif for the mcp2515 library (http://www.kreatives-chaos.com/artikel/universelle-can-bibliothek)
-- Nuno Alves for the modified mcp2515 library (http://www.nunoalves.com/open_source/?p=475) which allows sending frames with extended identifier 
-  (I've further modified the library myself)
-- SKPang for the Can bus library (http://www.skpang.co.uk/catalog/arduino-canbus-shield-with-usd-card-holder-p-706.html)
-
