@@ -77,14 +77,14 @@
 			<location>E:/CODE/ArduinoCode/libraries/TimerOne</location>
 		</link>
 		<link>
+			<name>libraries/UsbCAN</name>
+			<type>2</type>
+			<location>E:/CODE/ArduinoCode/libraries/UsbCAN</location>
+		</link>
+		<link>
 			<name>libraries/Wire</name>
 			<type>2</type>
 			<location>D:/Andre/eclipse/arduinoPlugin/packages/arduino/hardware/avr/1.6.11/libraries/Wire</location>
-		</link>
-		<link>
-			<name>libraries/usbcan</name>
-			<type>2</type>
-			<location>E:/CODE/ArduinoCode/libraries/usbcan</location>
 		</link>
 	</linkedResources>
 </projectDescription>

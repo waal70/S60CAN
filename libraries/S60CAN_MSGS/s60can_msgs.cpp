@@ -22,10 +22,10 @@
 ** 09-09-2015: Implemented oil and boost pressure readings
 **
 */
-#if TARGETS80 == 0
+#ifdef TARGETS60
 #include <Arduino.h>
 #include <mcp2515.h>
-#include "s60can.h"
+#include "../../s60can/s60can.h"
 
 #define KEEPALIVE_MSG 0
 #define DPF_MSG 0x0196
@@ -53,7 +53,7 @@
 void init_keepalive(int blnLBM) {
     LOOPBACKMODE = blnLBM;
     last_keepalive_msg=millis();
-    keepalive_timeout = 40;
+    keepalive_timeout = 40000;
 }
 
 void init_monitoring(int blnLBM) {
@@ -64,15 +64,15 @@ void init_monitoring(int blnLBM) {
     
     // initialize the egr monitoring message
     last_egr_msg=last_dpf_msg;
-    last_egr_frequency = 10; //every second
+    last_egr_frequency = 10000; //every second
 
     // initialize the oil monitoring message
     last_oil_msg=last_dpf_msg;
-    last_oil_frequency = 50; //every 5 seconds
+    last_oil_frequency = 500000; //every 5 seconds
 
     // initialize the boost monitoring message
     last_boost_msg=last_dpf_msg;
-    last_boost_frequency = 5; //every half a second
+    last_boost_frequency = 50000; //every half a second
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -132,6 +132,7 @@ int isBOOSTMessage(tCAN * message) {
 tCAN construct_CAN_msg(int msgType) {
   tCAN message;
   
+  Serial.println("S60!");
   switch (msgType) {
     case KEEPALIVE_MSG:
       //live keepalive message:

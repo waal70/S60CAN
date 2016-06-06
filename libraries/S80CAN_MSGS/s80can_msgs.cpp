@@ -30,17 +30,16 @@
 ** VIDA constructs thusly:
 ** 00,00,07,E0,22,D9,DC
 ** Whilst this is what it should be:
-** 00,00,07,E0,03,22,D9,DC,00,00,00,00
+** 00,00,07,E0 | 03,22,D9,DC,00,00,00,00
 ** In short: count the number of meaningful bytes and insert this BEFORE sending the actual message
 */
-#if TARGETS80 == 1
 #include <Arduino.h>
 #include <mcp2515.h>
-#include "s60can.h"
+#include "../../s60can/s60can.h"
 
 #define KEEPALIVE_MSG 0
-#define DPF_MSG 1
-#define EGR_MSG 2
+#define DPF_MSG 1 //DPF = KVL for S80
+#define EGR_MSG 2 //EGR = TRX for S80
 #define OIL_MSG 3
 #define BOOST_MSG 4
 
@@ -64,7 +63,7 @@
 void init_keepalive(int blnLBM) {
     LOOPBACKMODE = blnLBM;
     last_keepalive_msg=millis();
-    keepalive_timeout = 40;
+    keepalive_timeout = 40000;
 }
 
 void init_monitoring(int blnLBM) {
@@ -75,15 +74,15 @@ void init_monitoring(int blnLBM) {
     
     // initialize the egr monitoring message
     last_egr_msg=last_dpf_msg;
-    last_egr_frequency = 10; //every second
+    last_egr_frequency = 10000; //every second
 
     // initialize the oil monitoring message
     last_oil_msg=last_dpf_msg;
-    last_oil_frequency = 50; //every 5 seconds
+    last_oil_frequency = 50000; //every 5 seconds
 
     // initialize the boost monitoring message
     last_boost_msg=last_dpf_msg;
-    last_boost_frequency = 5; //every half a second
+    last_boost_frequency = 5000; //every half a second
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -91,19 +90,19 @@ void init_monitoring(int blnLBM) {
 int isDPFMessage(tCAN * message) {
 
   // Ignore canid. Different cars may send different diagnostic id's
-  // DPF-return message contains: CE 11 E6 01 96 xx yy 00. 11 E6 01 96 are relevant
-  //loopback testing:
-  return ((message->data[1] == 0x11) && (message->data[2] == 0xE6) && (message->data[3] == 0x01) && (message->data[4] == 0x96));
-
+  // DPF-return message contains is COOLANT return message in S80
+  // For S80: KVL-return message contains: 0x04,0x62,0xF4,0x05,0x61,0x00,0x00,0x00
+  return ((message->data[1] == 0x62) && (message->data[2] == 0xF4) && (message->data[3] == 0x05));
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // 1 = succes, 0 = fail
 int isEGRMessage(tCAN * message) {
 
   // Ignore canid. Different cars may send different diagnostic id's
-  // DPF-return message contains: CE 11 E6 01 96 xx yy 00. 11 E6 01 96 are relevant
+  // EGR-return message contains is TRANSMISSION message in S80
+  // For S80: 0x05,0x62,0xD9,0x04,0x0D,0x33,0x00,0x00
   //loopback testing:
- return ((message->data[1] == 0x11) && (message->data[2] == 0xE6) && (message->data[3] == 0x00) && (message->data[4] == 0x2C));
+ return ((message->data[1] == 0x62) && (message->data[2] == 0xD9) && (message->data[3] == 0x04));
 
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -111,9 +110,8 @@ int isEGRMessage(tCAN * message) {
 int isOILMessage(tCAN * message) {
 
   // Ignore canid. Different cars may send different diagnostic id's
-  // DPF-return message contains: CE 11 E6 00 ED xx yy 00. 11 E6 00 ED are relevant
-  //loopback testing:
- return ((message->data[1] == 0x11) && (message->data[2] == 0xE6) && (message->data[3] == 0x00) && (message->data[4] == 0xED));
+  //S80-OIL: Payload: 0x05,0x62,0xD9,0xDC,0x0D,0x33,0x00,0x00
+ return ((message->data[1] == 0x62) && (message->data[2] == 0xD9) && (message->data[3] == 0xDC));
 
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -121,9 +119,8 @@ int isOILMessage(tCAN * message) {
 int isBOOSTMessage(tCAN * message) {
 
   // Ignore canid. Different cars may send different diagnostic id's
-  // DPF-return message contains: CE 11 E6 01 76 xx yy 00. 11 E6 01 76 are relevant
-  //loopback testing:
-  return ((message->data[1] == 0x11) && (message->data[2] == 0xE6) && (message->data[3] == 0x01) && (message->data[4] == 0x76));
+  // S80-BOOST: Payload: 0x05,0x62,0xD9,0xE4,0x04,0x07,0x00,0x00
+  return ((message->data[1] == 0x62) && (message->data[2] == 0xD9) && (message->data[3] == 0x04));
 
 }
  
@@ -131,65 +128,73 @@ int isBOOSTMessage(tCAN * message) {
 tCAN construct_CAN_msg(int msgType) {
   tCAN message;
 
+//Loopback-mode means sending the RETURN-message as the request, so
+  // switch some fields around
+
 //default things:
     message.id = 0x07e0;
     message.header.rtr = 0;
-    message.header.length = 8;
+    message.length = 8;
+    String payload ;
+    payload = "default";
 
   switch (msgType) {
-    case KEEPALIVE_MSG:
+    case (KEEPALIVE_MSG):
+	{
       //000FFFFE D800000000000000
       //                 =0=   =1=   =2=   =3=   =4=   =5=   =6=   =7=
-      char payload[8] = {0xD8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+      payload = "0xD8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00";
     break;
+	}
     case (DPF_MSG):
-      // CD 11 E6 01 96 0F D9 00
-      // CD 11 A6 01 96 01 00 00
+		//DPF = KVL
       if (LOOPBACKMODE) {
-        char payload[8]   = {0xCD, 0x11, 0xE6, 0x01, 0x96, 0x0F, 0xD9, 0x00};
+        payload   = "0x04, 0x62, 0xF4, 0x05, 0x61, 0x00, 0x00, 0x00";
       }
       else {
-        char payload[8]   = {0xCD, 0x11, 0xA6, 0x01, 0x96, 0x01, 0x00, 0x00};
+        payload   = "0x03, 0x22, 0xF4, 0x05, 0x00, 0x00, 0x00, 0x00";
       }
     break;
     case (EGR_MSG):
-      // CD 11 E6 00 2C 15 DB 00
-      // CD 11 A6 00 2C 01 00 00
+      // EGR = TRX
       if (LOOPBACKMODE) {
-        char payload[8]   = {0xCD, 0x11, 0xE6, 0x00, 0x2C, 0x15, 0xDB, 0x00};
+        payload   = "0x05, 0x62, 0xD9, 0x04, 0x0D, 0x33, 0x00, 0x00";
       }
       else {
-        char payload[8]   = {0xCD, 0x11, 0xA6, 0x00, 0x2C, 0x01, 0x00, 0x00};
+        payload   = "0x03, 0x22, 0xD9, 0x04, 0x00, 0x00, 0x00, 0x00";
       }
     break;
     case (OIL_MSG):
-      // CD 11 E6 00 ED 0E 3C 00
-      // CD 11 A6 00 ED 01 00 00
       if (LOOPBACKMODE) {
-        char payload[8]   = {0xCD, 0x11, 0xE6, 0x00, 0xED, 0x0E, 0x3C, 0x00};
+        payload   = "0x05, 0x62, 0xD9, 0xDC, 0x0D, 0x33, 0x00, 0x00";
       }
       else {
-        char payload[8]   = {0xCD, 0x11, 0xA6, 0x00, 0xED, 0x01, 0x00, 0x00};
+        payload   = "0x03, 0x22, 0xD9, 0xDC, 0x00, 0x00, 0x00, 0x00";
       }
     break;
+
     case (BOOST_MSG):
-      // CD 11 E6 01 76 04 09 00
-      // CD 11 A6 01 76 01 00 00
+
       if (LOOPBACKMODE) {
-        char payload[8]   = {0xCD, 0x11, 0xE6, 0x01, 0x76, 0x04, 0x09, 0x00};
+        payload   = "0x05, 0x62, 0xD9, 0xE4, 0x04, 0x07, 0x00, 0x00";
       }
       else {
-        char payload[8]   = {0xCD, 0x11, 0xA6, 0x01, 0x76, 0x01, 0x00, 0x00};
+        payload   = "0x03, 0x22, 0xD9, 0xE4, 0x00, 0x00, 0x00, 0x00";
       }      
     break;
     default:
+    	payload   = "0x03, 0x22, 0xD9, 0xE4, 0x00, 0x00, 0x00, 0x00";
     break;
 
-    for (int i=0;i=7;i++)
-        message.data[i] = payload[i];
-   
-    return message;
   }
+
+    for (int i=0;i<8;i++)
+    {
+        message.data[i] = 0xAB;
+
+    }
+    return message;
+
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void checksend_CAN_msgs() {
@@ -238,5 +243,5 @@ tCAN sendMessage;
 
 
 }
-#endif
+
 

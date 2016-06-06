@@ -31,8 +31,8 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/S60CAN/libraries/LiquidCrystal_I2C}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/S60CAN/libraries/TimerOne}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/S60CAN/libraries/S80CAN_MSGS}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/S60CAN/libraries/UsbCAN}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/S60CAN/libraries/S60CAN_MSGS}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/S60CAN/libraries/usbcan}&quot;"/>
 								</option>
 								<inputType id="it.baeyens.arduino.compiler.cpp.sketch.input.380924233" name="CPP source files" superClass="it.baeyens.arduino.compiler.cpp.sketch.input"/>
 							</tool>
@@ -50,8 +50,8 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/S60CAN/libraries/LiquidCrystal_I2C}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/S60CAN/libraries/TimerOne}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/S60CAN/libraries/S80CAN_MSGS}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/S60CAN/libraries/UsbCAN}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/S60CAN/libraries/S60CAN_MSGS}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/S60CAN/libraries/usbcan}&quot;"/>
 								</option>
 								<inputType id="it.baeyens.arduino.compiler.c.sketch.input.867256497" name="C Source Files" superClass="it.baeyens.arduino.compiler.c.sketch.input"/>
 							</tool>
@@ -64,7 +64,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="libraries/**/?xamples/**|libraries/**/?xtras/**|libraries/**/test/**|libraries/**/third-party/**|libraries**/._*" flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name=""/>
+						<entry excluding="libraries/**/test/**|libraries**/._*|libraries/**/third-party/**|libraries/**/?xamples/**|libraries/**/?xtras/**" flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>

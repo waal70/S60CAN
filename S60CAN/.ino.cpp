@@ -2,7 +2,7 @@
 //This is a automatic generated file
 //Please do not modify this file
 //If you touch this file your change will be overwritten during the next build
-//This file has been generated on 2016-06-06 13:50:56
+//This file has been generated on 2016-06-06 17:41:34
 
 #include "Arduino.h"
 #include <TimerOne.h>
@@ -16,10 +16,10 @@
 #include <mcp2515.h>
 #include <mcp2515_defs.h>
 #include <LiquidCrystal_I2C.h>
-#include "s80can_msgs.h"
 #include "s60can_msgs.h"
+#include "s80can_msgs.h"
 #include <SD.h>
-#include "usbcan.h"
+#include "UsbCAN.h"
 static int uart_putchar (char c, FILE *stream)   ;
 void display_operation_mode() ;
 int switch_mode(unsigned int mode) ;

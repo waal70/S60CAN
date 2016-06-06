@@ -22,7 +22,7 @@
 **
 */
 
-#include "usbcan.h"
+#include "../UsbCAN/usbcan.h"
 #include "../../s60can/s60can.h"
 
 void init_keepalive(int blnLBM);

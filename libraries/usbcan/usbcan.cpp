@@ -31,8 +31,8 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "s60can.h"
-#include "usbcan.h"
+#include "../../s60can/s60can.h"
+#include "../UsbCAN/usbcan.h"
 
 //#define usb_putc(x) Serial.write(x)
 //#define usb_puts(x) Serial.print(x)
@@ -168,7 +168,7 @@ transmit_CAN (void)
     
     // FIXME: we are now copying from UsbCAN struct to MCP2515 driver struct. Should clean up this mess and use the destination struct from the begininning
 
-    msg.header.length = CAN_tx_msg.len & 0x0F;
+    msg.length = CAN_tx_msg.len & 0x0F;
 
     // check for remote transmission request
     if (CAN_tx_msg.rtr)
@@ -177,10 +177,12 @@ transmit_CAN (void)
         msg.header.rtr = 0;
 
     // check for extented frame usage
+#if TARGETS60
     if (CAN_tx_msg.format)
       msg.header.eid = 1; //temp_frame_info |= _BV (FF_Bit);
     else
       msg.header.eid = 0;
+#endif
 
     msg.id = CAN_tx_msg.id;
     int i=0;
@@ -843,6 +845,7 @@ void dispatch_CAN_message( tCAN * message )
 
   int i;
           // check frame format
+#if TARGETS60
             if (!message->header.eid) {	// Standart Frame
                 if (!message->header.rtr) {
                     usb_putc (SEND_11BIT_ID);
@@ -872,12 +875,28 @@ void dispatch_CAN_message( tCAN * message )
                 usb_byte2ascii ((uint8_t) (message->id >> 8) & 0xFF);
                 usb_byte2ascii ((uint8_t) message->id & 0xFF);
             }
+#else
+            if (!message->header.rtr) {
+                               usb_putc (SEND_11BIT_ID);
+                           }		// send command tag
+                           else {
+                               usb_putc (SEND_R11BIT_ID);
+                           }
+
+                           // send high byte of ID
+                           if (((message->id >> 8) & 0x0F) < 10)
+                               usb_putc (((uint8_t) (message->id >> 8) & 0x0F) + 48);
+                           else
+                               usb_putc (((uint8_t) (message->id >> 8) & 0x0F) + 55);
+                           // send low byte of ID
+                           usb_byte2ascii ((uint8_t) message->id & 0xFF);
+#endif
             
             // send data length code
-            usb_putc (message->header.length + '0');
+            usb_putc (message->length + '0');
             if (!message->header.rtr) {	// send data only if no remote frame request
                 // send data bytes
-                for (i = 0; i <  message->header.length; i++)
+                for (i = 0; i <  message->length; i++)
                     usb_byte2ascii (message->data[i]);
             }
             // send time stamp if required

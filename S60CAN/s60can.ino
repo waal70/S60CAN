@@ -1,4 +1,3 @@
-
 /* S60 CAN  - Arduino firmware - version 0.5 alpha
 **
 ** Copyright (c) 2015 André de Waal
@@ -46,7 +45,7 @@
 #define KEEPALIVE
 #define LOOPBACKMODE   1
 // Set this to 1 if the target is a non-EID S80
-#define TARGETS80      0
+#define TARGETS60      0
 
 // This enables using the apparatus as an indepent DPF temp monitor 
 //  the original goal for making this :)
@@ -64,17 +63,17 @@
 #include <mcp2515_defs.h> 
 #include <LiquidCrystal_I2C.h>
 
-#if TARGETS80 == 1
-#include "s80can_msgs.h"
+#ifdef TARGETS60
+	#include "s60can_msgs.h"
 #else
-#include "s60can_msgs.h"
+	#include "s80can_msgs.h"
 #endif
 
 
 #include <SD.h>
   const int chipSelect = 9; //The CARD_SC pin on the sparkfun board
 
-#include "usbcan.h"
+#include "UsbCAN.h"
 
 char foo;  // for the sake of Arduino header parsing anti-automagic. Remove and prepare yourself for headache.
 
@@ -353,7 +352,7 @@ void show_CAN_msg_on_LCD( tCAN * message, bool recv )
       lcd.setCursor(0,1);
 
       int i;
-      for (i=0;i<message->header.length;i++)
+      for (i=0;i<=7;i++)
         {
         sprintf(data,"%02x", message->data[i]);
         lcd.print(data);
@@ -362,7 +361,8 @@ void show_CAN_msg_on_LCD( tCAN * message, bool recv )
 #endif
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-int send_CAN_msg(tCAN * msg)  {   
+int send_CAN_msg(tCAN * msg)  {
+  int ret = 0;   
   #ifdef LCD
     //disable this for monitoring mode
     #ifndef DPFMONITOR
@@ -370,7 +370,23 @@ int send_CAN_msg(tCAN * msg)  {
     #endif
   #endif
   
-  int ret=mcp2515_send_message_J1939(msg);  // ret=0 (buffers full), 1 or 2 = used send buffer
+#if TARGETS60
+	  ret=mcp2515_send_message_J1939(msg);  // ret=0 (buffers full), 1 or 2 = used send buffer
+#else
+	  ret=mcp2515_send_message(msg);
+#endif
+
+  printf("Message SENT now \n");
+  char hdr[16];
+  sprintf(hdr,"HDR: %02x \n", msg->id);
+  printf(hdr);
+  int i;
+  char data[8];
+  for (i=0;i<=7;i++)
+    {
+	  sprintf(data,"%02x", msg->data[i]);
+	  printf(data);
+    }
   if (ret==0) {
     #ifdef LCD
       lcd.setCursor(0,0);
@@ -391,8 +407,9 @@ int freeRam () {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void checkRam() {
-  unsigned int freeram = freeRam();
+
   #ifdef DEBUG_FREE_MEM
+	  unsigned int freeram = freeRam();
   if (freeram < 256)
     {
       printf(F("Warning! Lo mem: "));
@@ -472,17 +489,21 @@ void setFilter()
 // 03C01428: ?
 // 01E0162A: ?
   
- #if TARGETS80 == 0
+ #if TARGETS60
   uint32_t masks[2] = {0xffffffff, 0xffffffff};
   uint32_t filters[6] = {0x000FFFFE, 0x01200021, 0x00000000, 0x00000000, 0x00000000, 0x00000000};
- #else
-  uint16_t masks[2] = {0xffff, 0xffff};
-  uint16_t filters[6] = {0xFFFE, 0x0021, 0x0000, 0x0000, 0x0000, 0x0000};
- #endif
-
   delay(10);
     mcp2515_setHWFilter(masks,2, filters, 6);
   delay(10);
+ #else
+  uint16_t masks[2] = {0x0000, 0x0000};
+  uint16_t filters[6] = {0x07e0, 0x07e8, 0x0000, 0x0000, 0x0000, 0x0000};
+  delay(10);
+    mcp2515_setHWFilterS80(masks,2, filters, 6);
+  delay(10);
+ #endif
+
+
 
 
 }
@@ -578,9 +599,6 @@ void handle_CAN_rx() {
           if (isBOOSTMessage(&message))
             write_BOOST_msg_on_LCD(&message);
           
-          #ifdef USBCAN
-            return UsbCAN::dispatch_CAN_message(&message);
-          #endif
         } // if (status)  {
     } // while (mcp2515_check_message())
 }

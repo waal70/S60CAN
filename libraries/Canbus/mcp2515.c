@@ -247,8 +247,8 @@ uint8_t split_canbus_id(uint8_t requestedPart, uint32_t canbus_id) {
 			}
 		break;
 	}
+	return 0;
 }
-#if TARGETS80 == 0
 // ----------------------------------------------------------------------------
 // Utility to set the mask and filter in the appropriate registers 
 void mcp2515_setHWFilter(uint32_t masks[], int len_mask, uint32_t data_ids[], int len_data) {
@@ -314,10 +314,10 @@ void mcp2515_setHWFilter(uint32_t masks[], int len_mask, uint32_t data_ids[], in
 		mcp2515_write_register(RXB1CTRL, (1<<RXM1)|(1<<RXM0)); //disable second filter
 	
 }
-#else
+
 // ----------------------------------------------------------------------------
 // S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80
-void mcp2515_setHWFilter(uint16_t masks[], int len_mask, uint16_t data_ids[], int len_data) {
+void mcp2515_setHWFilterS80(uint16_t masks[], int len_mask, uint16_t data_ids[], int len_data) {
   
   //Assume the mask and the id come in the following format:
   // 0x01234567
@@ -374,7 +374,6 @@ void mcp2515_setHWFilter(uint16_t masks[], int len_mask, uint16_t data_ids[], in
 		mcp2515_write_register(RXB1CTRL, (1<<RXM1)|(1<<RXM0)); //disable second filter
 	
 }
-#endif
 
 // ----------------------------------------------------------------------------
 // check if there are any new messages waiting
@@ -424,7 +423,9 @@ uint8_t mcp2515_get_message(tCAN *message)
 	if (bit_is_set(status,RXS_EXIDE) )
 		{
 		// Extended id: read id
+#if TARGETS60
 		message->header.eid = 1;
+#endif
 		message->id = (uint32_t)(spi_putc(0xff)) << 21; // 8 MSB of Identifier A
 		uint8_t RXBnSIDL = spi_putc(0xff);
 		message->id |= ((uint32_t)(RXBnSIDL & 0b11100000)) << (18-5);  // 3 MSB of Identifier A
@@ -435,7 +436,7 @@ uint8_t mcp2515_get_message(tCAN *message)
 	else
 		{
 		// Standard id: read id
-		message->header.eid = 0;
+		//message->header.eid = 0;
 		message->id  = (uint16_t) spi_putc(0xff) << 3;
 		message->id |=            spi_putc(0xff) >> 5;
 	
@@ -446,7 +447,7 @@ uint8_t mcp2515_get_message(tCAN *message)
 	// read DLC
 	uint8_t length = spi_putc(0xff) & 0x0f;
 	
-	message->header.length = length;
+	message->length = length;
 	message->header.rtr = (bit_is_set(status, 3)) ? 1 : 0;
 	
 	// read data
@@ -467,19 +468,19 @@ uint8_t mcp2515_get_message(tCAN *message)
 }
 
 // ----------------------------------------------------------------------------
-uint8_t mcp2515_send_message(tCAN *message)
+uint8_t mcp2515_send_message(const tCAN *msg)
 {
+	// Status des MCP2515 auslesen
 	uint8_t status = mcp2515_read_status(SPI_READ_STATUS);
 	
 	/* Statusbyte:
 	 *
-	 * Bit	Function
+	 * Bit	Funktion
 	 *  2	TXB0CNTRL.TXREQ
 	 *  4	TXB1CNTRL.TXREQ
 	 *  6	TXB2CNTRL.TXREQ
 	 */
 	uint8_t address;
-	uint8_t t;
 	if (bit_is_clear(status, 2)) {
 		address = 0x00;
 	}
@@ -490,38 +491,47 @@ uint8_t mcp2515_send_message(tCAN *message)
 		address = 0x04;
 	}
 	else {
-		// all buffer used => could not send message
+		// Alle Puffer sind belegt,
+		// Nachricht kann nicht verschickt werden
 		return 0;
 	}
 	
 	RESET(MCP2515_CS);
 	spi_putc(SPI_WRITE_TX | address);
+	#if TARGETS60
+		mcp2515_write_id(&msg->id, msg->header.eid);
+	#else
+		mcp2515_write_id(&msg->id);
+	#endif
+	uint8_t length = msg->length & 0x0f;
 	
-	spi_putc(message->id >> 3);
-    spi_putc(message->id << 5);
-	spi_putc(0);
-	spi_putc(0);
+	// Ist die Nachricht ein "Remote Transmit Request" ?
+	if (msg->header.rtr)
+	{
+		// Ein RTR hat zwar eine Laenge,
+		// enthaelt aber keine Daten
 
-	uint8_t length = message->header.length & 0x0f;
-	
-	if (message->header.rtr) {
-		// a rtr-frame has a length, but contains no data
+		// Nachrichten Laenge + RTR einstellen
 		spi_putc((1<<RTR) | length);
 	}
-	else {
-		// set message length
+	else
+	{
+		// Nachrichten Laenge einstellen
 		spi_putc(length);
 		
-		// data
-		for (t=0;t<length;t++) {
-			spi_putc(message->data[t]);
+		// Daten
+		uint8_t i;
+		for (i=0;i<length;i++) {
+			spi_putc(msg->data[i]);
 		}
 	}
 	SET(MCP2515_CS);
 	
 	_delay_us(1);
 	
-	// send message
+	// CAN Nachricht verschicken
+	// die letzten drei Bit im RTS Kommando geben an welcher
+	// Puffer gesendet werden soll.
 	RESET(MCP2515_CS);
 	address = (address == 0) ? 1 : address;
 	spi_putc(SPI_RTS | address);
@@ -529,9 +539,10 @@ uint8_t mcp2515_send_message(tCAN *message)
 	
 	return address;
 }
-#if TARGETS80 == 0
+
 ////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////
+#if TARGETS60
 uint8_t mcp2515_send_message_J1939(tCAN *message)
 {
 	uint8_t status = mcp2515_read_status(SPI_READ_STATUS);
@@ -578,7 +589,7 @@ uint8_t mcp2515_send_message_J1939(tCAN *message)
 	spi_putc(TXBnEID8);
 	spi_putc(TXBnEID0);	
 
-	uint8_t length = message->header.length & 0x0f;
+	uint8_t length = message->length & 0x0f;
 	
 	if (message->header.rtr) {
 		// a rtr-frame has a length, but contains no data
@@ -605,12 +616,73 @@ uint8_t mcp2515_send_message_J1939(tCAN *message)
 	
 	return address;
 }
-#else
+#endif
 ////////////////////S80-version starts here ///////////////////////////////////
 /////////
 ///////////////////////////////////////////////////////////////////////////////
+static void spi_start(uint8_t data) {
+	SPDR = data;
+}
 
-uint8_t mcp2515_send_message_J1939(tCAN *message)
+static uint8_t spi_wait(void) {
+	// warten bis der vorherige Werte geschrieben wurde
+	while(!(SPSR & (1<<SPIF)))
+		;
+
+	return SPDR;
+}
+#if TARGETS60
+
+void mcp2515_write_id(const uint32_t *id, uint8_t extended)
+{
+	uint8_t tmp;
+
+	if (extended) {
+		spi_start(*((uint16_t *) id + 1) >> 5);
+
+		// naechsten Werte berechnen
+		tmp  = (*((uint8_t *) id + 2) << 3) & 0xe0;
+		tmp |= (1 << IDE);
+		tmp |= (*((uint8_t *) id + 2)) & 0x03;
+
+		// warten bis der vorherige Werte geschrieben wurde
+		spi_wait();
+
+		// restliche Werte schreiben
+		spi_putc(tmp);
+		spi_putc(*((uint8_t *) id + 1));
+		spi_putc(*((uint8_t *) id));
+	}
+	else {
+		spi_start(*((uint16_t *) id) >> 3);
+
+		// naechsten Werte berechnen
+		tmp = *((uint8_t *) id) << 5;
+		spi_wait();
+
+		spi_putc(tmp);
+		spi_putc(0);
+		spi_putc(0);
+	}
+}
+
+#else
+	void mcp2515_write_id(const uint16_t *id)
+	{
+		uint8_t tmp;
+
+		spi_start(*id >> 3);
+		tmp = *((uint8_t *) id) << 5;
+		spi_wait();
+
+		spi_putc(tmp);
+		spi_putc(0);
+		spi_putc(0);
+	}
+
+#endif	// TARGETS60
+
+uint8_t mcp2515_send_message_J1939_S80(tCAN *message)
 {
 	// Status des MCP2515 auslesen
 	uint8_t status = mcp2515_read_status(SPI_READ_STATUS);
@@ -623,13 +695,13 @@ uint8_t mcp2515_send_message_J1939(tCAN *message)
 	 *  6	TXB2CNTRL.TXREQ
 	 */
 	uint8_t address;
-	if (_bit_is_clear(status, 2)) {
+	if (bit_is_clear(status, 2)) {
 		address = 0x00;
 	}
-	else if (_bit_is_clear(status, 4)) {
+	else if (bit_is_clear(status, 4)) {
 		address = 0x02;
 	} 
-	else if (_bit_is_clear(status, 6)) {
+	else if (bit_is_clear(status, 6)) {
 		address = 0x04;
 	}
 	else {
@@ -642,7 +714,7 @@ uint8_t mcp2515_send_message_J1939(tCAN *message)
 	spi_putc(SPI_WRITE_TX | address);
 	mcp2515_write_id(&message->id);
 
-	uint8_t length = message->header.length & 0x0f;
+	uint8_t length = message->length & 0x0f;
 	
 	// Is it a "Remote Transmit Request" ?
 	if (message->header.rtr)
@@ -672,5 +744,5 @@ uint8_t mcp2515_send_message_J1939(tCAN *message)
 
 	return address;
 }
-#endif	
+
 
