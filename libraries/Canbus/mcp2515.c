@@ -317,6 +317,7 @@ void mcp2515_setHWFilter(uint32_t masks[], int len_mask, uint32_t data_ids[], in
 
 // ----------------------------------------------------------------------------
 // S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80 S80
+#if TARGETS60 == 0
 void mcp2515_setHWFilterS80(uint16_t masks[], int len_mask, uint16_t data_ids[], int len_data) {
   
   //Assume the mask and the id come in the following format:
@@ -335,25 +336,32 @@ void mcp2515_setHWFilterS80(uint16_t masks[], int len_mask, uint16_t data_ids[],
 	len_mask = 2;
   if (len_data > 6)
 	len_data = 6;
-  //if ((len_mask =< 0) | (len_data =< 0))
 	
-	//need to quit
+
   // First, set the mask(s):
-  int i=0;
-  for (i=0; i<len_mask; i++)
-	{
-		  int j = i*4;
-		  mcp2515_write_register(RXM0SIDH + j, masks[i]);
-	}
-	
+  // mask 1:
+ mcp2515_write_register(RXM0SIDH, masks[0]);
+ // mask 2:
+ mcp2515_write_register(RXM1SIDH, masks[1]);
+
+
   // Now the filters:
-  int fc=0;
-  for (i=0; i<len_data; i++)
+  uint8_t address = RXF0SIDH;
+  int j;
+  for (int i=0; i<len_data; i++)
 	{
+	  	j=i;
 		if (i>=3)
-		 fc = 4; //extra correcting for moving from filter 2 to filter 3
-		int j = fc + (i*4);
-		mcp2515_write_register(RXF0SIDH + j, data_ids[i]);
+		{
+			address= RXF3SIDH;
+			j = i-3;
+		}
+
+			RESET(MCP2515_CS);
+			spi_putc(SPI_WRITE);
+			spi_putc(address | (j * 4));
+			mcp2515_write_id(&data_ids[i]);
+			SET(MCP2515_CS);
 	}
   //A note on filters:
   //RXM<1:0>: Receive Buffer Operating mode bits 6-5
@@ -367,13 +375,11 @@ void mcp2515_setHWFilterS80(uint16_t masks[], int len_mask, uint16_t data_ids[],
   
   //this enables filtering. Use 1<< to disable filters
   //Enable filter for buffer 0:
-	mcp2515_write_register(RXB0CTRL, (0<<RXM1)|(0<<RXM0));
-	if (len_mask == 2)
-		mcp2515_write_register(RXB1CTRL, (0<<RXM1)|(0<<RXM0));
-	else
-		mcp2515_write_register(RXB1CTRL, (1<<RXM1)|(1<<RXM0)); //disable second filter
+  mcp2515_write_register(RXB0CTRL, (1<<RXM0));
+  mcp2515_write_register(RXB1CTRL, (1<<RXM0));
 	
 }
+#endif
 
 // ----------------------------------------------------------------------------
 // check if there are any new messages waiting
@@ -542,7 +548,6 @@ uint8_t mcp2515_send_message(const tCAN *msg)
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////
-#if TARGETS60
 uint8_t mcp2515_send_message_J1939(tCAN *message)
 {
 	uint8_t status = mcp2515_read_status(SPI_READ_STATUS);
@@ -616,7 +621,6 @@ uint8_t mcp2515_send_message_J1939(tCAN *message)
 	
 	return address;
 }
-#endif
 ////////////////////S80-version starts here ///////////////////////////////////
 /////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -682,67 +686,5 @@ void mcp2515_write_id(const uint32_t *id, uint8_t extended)
 
 #endif	// TARGETS60
 
-uint8_t mcp2515_send_message_J1939_S80(tCAN *message)
-{
-	// Status des MCP2515 auslesen
-	uint8_t status = mcp2515_read_status(SPI_READ_STATUS);
-	
-	/* Statusbyte:
-	 *
-	 * Bit	Funktion
-	 *  2	TXB0CNTRL.TXREQ
-	 *  4	TXB1CNTRL.TXREQ
-	 *  6	TXB2CNTRL.TXREQ
-	 */
-	uint8_t address;
-	if (bit_is_clear(status, 2)) {
-		address = 0x00;
-	}
-	else if (bit_is_clear(status, 4)) {
-		address = 0x02;
-	} 
-	else if (bit_is_clear(status, 6)) {
-		address = 0x04;
-	}
-	else {
-		// All buffers are full
-		// Cannot send message:
-		return 0;
-	}
-	
-	RESET(MCP2515_CS);
-	spi_putc(SPI_WRITE_TX | address);
-	mcp2515_write_id(&message->id);
-
-	uint8_t length = message->length & 0x0f;
-	
-	// Is it a "Remote Transmit Request" ?
-	if (message->header.rtr)
-	{
-		spi_putc((1<<RTR) | length);
-	}
-	else
-	{
-		// Set message length
-		spi_putc(length);
-		
-		// Data
-		for (uint8_t i=0;i<length;i++) {
-			spi_putc(message->data[i]);
-		}
-	}
-	SET(MCP2515_CS);
-	
-	_delay_us(1);
-	
-	// Send CAN message
-	// Last 3 bits in RTS show which buffer is used to send
-	RESET(MCP2515_CS);
-	address = (address == 0) ? 1 : address;
-	spi_putc(SPI_RTS | address);
-	SET(MCP2515_CS);
-
-	return address;
-}
 
 

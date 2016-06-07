@@ -43,7 +43,7 @@
 #define OIL_MSG 3
 #define BOOST_MSG 4
 
-    int LOOPBACKMODE = 0;
+    int LOOPBACK = 0;
     unsigned long last_keepalive_msg;
     unsigned long keepalive_timeout; // timeout in 1/10 seconds. 0=keepalive messaging disabled
 
@@ -61,28 +61,28 @@
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void init_keepalive(int blnLBM) {
-    LOOPBACKMODE = blnLBM;
+    LOOPBACK = blnLBM;
     last_keepalive_msg=millis();
     keepalive_timeout = 40000;
 }
 
 void init_monitoring(int blnLBM) {
-    LOOPBACKMODE = blnLBM;
+    LOOPBACK = blnLBM;
     // initialize the dpf monitoring message
     last_dpf_msg=millis();
     last_dpf_frequency = 35; //every 3.5 seconds
     
     // initialize the egr monitoring message
     last_egr_msg=last_dpf_msg;
-    last_egr_frequency = 10000; //every second
+    last_egr_frequency = 10; //every second
 
     // initialize the oil monitoring message
     last_oil_msg=last_dpf_msg;
-    last_oil_frequency = 50000; //every 5 seconds
+    last_oil_frequency = 50; //every 5 seconds
 
     // initialize the boost monitoring message
     last_boost_msg=last_dpf_msg;
-    last_boost_frequency = 5000; //every half a second
+    last_boost_frequency = 5; //every half a second
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -124,6 +124,14 @@ int isBOOSTMessage(tCAN * message) {
 
 }
  
+void populate_CAN_msg(char c_payload[]) {
+	//Assumptions: incoming string has always 8 elements
+	// return a byte array
+	for (int i=0;i<8;i++)
+	{
+
+	}
+}
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 tCAN construct_CAN_msg(int msgType) {
   tCAN message;
@@ -135,64 +143,76 @@ tCAN construct_CAN_msg(int msgType) {
     message.id = 0x07e0;
     message.header.rtr = 0;
     message.length = 8;
-    String payload ;
-    payload = "default";
+    //char finalpayload[8];
 
   switch (msgType) {
     case (KEEPALIVE_MSG):
 	{
       //000FFFFE D800000000000000
       //                 =0=   =1=   =2=   =3=   =4=   =5=   =6=   =7=
-      payload = "0xD8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00";
+      char payload[8] = {0xD8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+      memcpy(message.data, payload, 8);
     break;
 	}
     case (DPF_MSG):
 		//DPF = KVL
       if (LOOPBACKMODE) {
-        payload   = "0x04, 0x62, 0xF4, 0x05, 0x61, 0x00, 0x00, 0x00";
+    	  char payload[8] = {0x04, 0x62, 0xF4, 0x05, 0x61, 0x00, 0x00, 0x00};
+          memcpy(message.data, payload, 8);
       }
       else {
-        payload   = "0x03, 0x22, 0xF4, 0x05, 0x00, 0x00, 0x00, 0x00";
+    	  char payload[8] = {0x03, 0x22, 0xF4, 0x05, 0x00, 0x00, 0x00, 0x00};
+    	  memcpy(message.data, payload, 8);
       }
     break;
     case (EGR_MSG):
       // EGR = TRX
       if (LOOPBACKMODE) {
-        payload   = "0x05, 0x62, 0xD9, 0x04, 0x0D, 0x33, 0x00, 0x00";
+    	  char payload[8]   = {0x05, 0x62, 0xD9, 0x04, 0x0D, 0x33, 0x00, 0x00};
+    	  memcpy(message.data, payload, 8);
       }
       else {
-        payload   = "0x03, 0x22, 0xD9, 0x04, 0x00, 0x00, 0x00, 0x00";
+    	  char payload[8]   = {0x03, 0x22, 0xD9, 0x04, 0x00, 0x00, 0x00, 0x00};
+    	  memcpy(message.data, payload, 8);
       }
     break;
     case (OIL_MSG):
       if (LOOPBACKMODE) {
-        payload   = "0x05, 0x62, 0xD9, 0xDC, 0x0D, 0x33, 0x00, 0x00";
+    	  char payload[8]   = {0x05, 0x62, 0xD9, 0xDC, 0x0D, 0x33, 0x00, 0x00};
+    	  memcpy(message.data, payload, 8);
       }
       else {
-        payload   = "0x03, 0x22, 0xD9, 0xDC, 0x00, 0x00, 0x00, 0x00";
+    	  char payload[8]   = {0x03, 0x22, 0xD9, 0xDC, 0x00, 0x00, 0x00, 0x00};
+    	  memcpy(message.data, payload, 8);
       }
     break;
 
     case (BOOST_MSG):
 
       if (LOOPBACKMODE) {
-        payload   = "0x05, 0x62, 0xD9, 0xE4, 0x04, 0x07, 0x00, 0x00";
+    	  char payload[8]   = {0x05, 0x62, 0xD9, 0xE4, 0x04, 0x07, 0x00, 0x00};
+    	  memcpy(message.data, payload, 8);
       }
       else {
-        payload   = "0x03, 0x22, 0xD9, 0xE4, 0x00, 0x00, 0x00, 0x00";
+    	  char payload[8]   = {0x03, 0x22, 0xD9, 0xE4, 0x00, 0x00, 0x00, 0x00};
+    	  memcpy(message.data, payload, 8);
       }      
     break;
     default:
-    	payload   = "0x03, 0x22, 0xD9, 0xE4, 0x00, 0x00, 0x00, 0x00";
+    	char payload[8]   = {0x03, 0x22, 0xD9, 0xE4, 0x00, 0x00, 0x00, 0x00};
+    	memcpy(message.data, payload, 8);
     break;
 
   }
 
-    for (int i=0;i<8;i++)
-    {
-        message.data[i] = 0xAB;
-
-    }
+// message already in buffer
+  //let's see if this works:
+//  memcpy(message.data, finalpayload,8);
+//    for (int i=0;i<8;i++)
+//    {
+//        message.data[i] = finalpayload[i];
+//
+//    }
     return message;
 
 }
@@ -243,5 +263,70 @@ tCAN sendMessage;
 
 
 }
+void prepOILMessage(tCAN * message, char * msg) {
+	  //pre-condition isOILMessage is true (1)
+	  char temp[6];
+	  uint16_t value;
+	  //S80: 0x05, 0x62, 0xD9, 0xDC, 0x0D, 0x33, 0x00, 0x00
+	  value = (uint16_t)(((message->data[4] << 8) | (message->data[5])) & 0xFFFF);
+
+	  // Check for a valid temperature, between 0 and 999.9 degrees celsius
+	  // Character buffers need to be at least 1 character longer than the number of characters you are writing to them
+	  // As we are writing 0.1 to maximum 999.9 this means a buffer of 5+1
+	  if (((double)value > 0) && ((double)value < 3732) )
+	  {
+	    dtostrf((value-2731.5)/10,3,1,temp);
+	    //337 is the degree symbol
+	    sprintf(msg, "OIL: %s \337C", temp);
+	  }
+	  else
+	    sprintf(msg, "OIL: ERR \337C");
+
+	}
+void prepEGRMessage(tCAN * message, char * msg) {
+	  char temp[6];
+	  uint16_t value;
+	  //S80: 0x05, 0x62, 0xD9, 0x04, 0x0D, 0x33, 0x00, 0x00
+	  value = (uint16_t)(((message->data[4] << 8) | (message->data[5])) & 0xFFFF);
+
+	  if (((double)value > 2732) && ((double)value < 22732) )
+	  {
+	    dtostrf((value-2731.5)/10,4,1,temp);
+	    //337 is the degree symbol
+	    sprintf(msg, "TRX: %s \337C", temp);
+	  }
+	  else
+	    sprintf(msg,"TRX: ERR \337C");
+	}
+void prepBOOSTMessage(tCAN * message, char * msg) {
+	  char temp[5];
+	  float factor = 0.001;
+	  uint16_t value;
+	  value = (uint16_t)(((message->data[4] << 8) | (message->data[5])) & 0xFFFF);
+	  if (((double)value > 0) && ((double)value < 8193) )
+	  {
+	    dtostrf((double)value*factor,1,2,temp);
+	    sprintf(msg, "TRB: %s bar", temp);
+	  }
+	  else
+	    sprintf(msg,"TRB: ERR bar");
+
+	}
+void prepDPFMessage(tCAN * message, char * msg) {
+
+	  char temp[7];
+	  uint16_t value;
+	  // For S80 return message is 0x04, 0x62, 0xF4, 0x05, 0x61, 0x00, 0x00, 0x00
+	  value = (uint16_t)(((message->data[4] << 8) | (message->data[5])) & 0xFFFF);
+	  if (((double)value > 2732) && ((double)value < 32732) )
+	  {
+	    dtostrf(((value-2731.5)/10)-2145,4,1,temp);
+	    //337 is the degree symbol
+	    sprintf(msg, "KVL: %s \337C", temp);
+	  }
+	  else
+	    sprintf(msg,"KVL: ERR \337C");
+
+	}
 
 

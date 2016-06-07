@@ -21,6 +21,8 @@
 ** License along with this program; if not, <http://www.gnu.org/licenses/>.
 **
 */
+#include "../../s60can/s60can.h"
+#include "../../s60can/compilecontrol.h"
 #include <avr/eeprom.h>
 
 #include <TimerOne.h>
@@ -30,9 +32,8 @@
 #include <ctype.h>
 #include <stdint.h>
 #include <stdio.h>
+#include "usbcan.h"
 
-#include "../../s60can/s60can.h"
-#include "../UsbCAN/usbcan.h"
 
 //#define usb_putc(x) Serial.write(x)
 //#define usb_puts(x) Serial.print(x)
@@ -177,7 +178,7 @@ transmit_CAN (void)
         msg.header.rtr = 0;
 
     // check for extented frame usage
-#if TARGETS60
+#if TARGETS60 == 1
     if (CAN_tx_msg.format)
       msg.header.eid = 1; //temp_frame_info |= _BV (FF_Bit);
     else

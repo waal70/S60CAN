@@ -1,3 +1,4 @@
+
 //========================S80 MESSAGES
 /* S60 CAN  - Arduino firmware - version 0.5 alpha
 **
@@ -32,3 +33,10 @@ int isDPFMessage(tCAN * message);
 int isOILMessage(tCAN * message);
 int isBOOSTMessage(tCAN * message);
 void checksend_CAN_msgs();
+void prepOILMessage(tCAN * message, char * msg);
+void prepEGRMessage(tCAN * message, char * msg);
+void prepBOOSTMessage(tCAN * message, char * msg);
+void prepDPFMessage(tCAN * message, char * msg);
+
+
+

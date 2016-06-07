@@ -1,3 +1,4 @@
+#if !defined(__IN_ECLIPSE__)
 /* S60 CAN  - Arduino firmware - version 0.5 alpha
 **
 ** Copyright (c) 2015 André de Waal
@@ -23,7 +24,7 @@
 **
 */
 
-#include "usbcan.h"
+#include "../UsbCAN/usbcan.h"
 #include "../../s60can/s60can.h"
 
 void init_keepalive(int blnLBM);
@@ -33,3 +34,8 @@ int isDPFMessage(tCAN * message);
 int isOILMessage(tCAN * message);
 int isBOOSTMessage(tCAN * message);
 void checksend_CAN_msgs();
+void prepOILMessage(tCAN * message, char * msg);
+void prepEGRMessage(tCAN * message, char * msg);
+void prepBOOSTMessage(tCAN * message, char * msg);
+void prepDPFMessage(tCAN * message, char * msg);
+#endif

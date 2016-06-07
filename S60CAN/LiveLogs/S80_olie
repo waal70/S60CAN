@@ -6,7 +6,7 @@ Payload: 0x03, 0x22, 0xD9, 0xDC, 0x00, 0x00, 0x00, 0x00
 Response:
 ID=0x07e8
 Payload: 0x05, 0x62, 0xD9, 0xDC, 0x0D, 0x33, 0x00, 0x00
-===================================KVL:
+===================================KVL:(DPF):56 graden
 ID=0x07e0
 Payload: 0x03, 0x22, 0xF4, 0x05, 0x00, 0x00, 0x00, 0x00
 Response:
@@ -19,7 +19,7 @@ Payload: 0x03, 0x22, 0xD9, 0xE4, 0x00, 0x00, 0x00, 0x00
 Response:
 ID=0x07e8
 Payload: 0x05, 0x62, 0xD9, 0xE4, 0x04, 0x07, 0x00, 0x00
-===================================TRANSMISSION:
+===================================TRANSMISSION (EGR):
 ID=0x07e
 Payload: 0x03, 0x22, 0xD9, 0x04, 0x00, 0x00, 0x00, 0x00
 Response:
@@ -132,5 +132,40 @@ Temperature sensor 23 graden
 Brandstofniveau: 2261D1
 
 Bakolie-temperatuur: 22D904
+
+void write_OIL_msg_on_LCD (tCAN *message) {
+
+  //pre-condition isOILMessage is true (1)
+  lcd.setCursor(0,2);
+  char temp[6];
+  char msg[16];
+  uint16_t value;
+  // CD 11 E6 00 ED 0E 3C 00
+  // This gets the 6th and 7th element from the OIL response message (tested through isOILMessage())
+  // 0E3C (3644) = 91.66, 0E39 (3641) = 90.96
+  // And calculates the temperature as follows:
+  // Decimal value is temperature in tenths of degrees Kelvin. Therefore:
+  // decimal value / 10 - 273.15 = degrees celsius:
+  //S80: 0x05, 0x62, 0xD9, 0xDC, 0x0D, 0x33, 0x00, 0x00
+#if TARGETS60
+  value = (uint16_t)(((message->data[5] << 8) | (message->data[6])) & 0xFFFF);
+#else
+  value = (uint16_t)(((message->data[4] << 8) | (message->data[5])) & 0xFFFF);
+#endif
+
+  // Check for a valid temperature, between 0 and 999.9 degrees celsius
+  // Character buffers need to be at least 1 character longer than the number of characters you are writing to them
+  // As we are writing 0.1 to maximum 999.9 this means a buffer of 5+1
+  if (((double)value > 0) && ((double)value < 3732) )
+  {
+    dtostrf((value-2731.5)/10,3,1,temp);
+    //337 is the degree symbol
+    sprintf(msg, "OIL: %s \337C", temp);
+    lcd.print(msg);
+  }
+  else
+    lcd.print(F("OIL: ERR \337C"));
+}
+
 
 

@@ -24,6 +24,7 @@
 
 #include "mcp2515_defs.h"
 #include "global.h"
+#include "../../s60can/compilecontrol.h"
 #ifdef __cplusplus
 
 extern "C"
@@ -34,7 +35,7 @@ extern "C"
 // ----------------------------------------------------------------------------
 typedef struct
 {
-	#if TARGETS60
+	#if TARGETS60 == 1
 		uint32_t id;				//!< ID der Nachricht (11 oder 29 Bit)
 		struct {
 			int rtr : 1;			//!< Remote-Transmit-Request-Frame?
@@ -116,7 +117,6 @@ void mcp2515_write_id(const uint16_t *id);
 #endif
 // sends a CAN message using the 29-bit J939 extended identifier
 uint8_t mcp2515_send_message_J1939(tCAN *message);
-uint8_t mcp2515_send_message_J1939_S80(tCAN *message);
 
 #ifdef __cplusplus
 }

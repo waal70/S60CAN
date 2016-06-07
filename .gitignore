@@ -20,6 +20,8 @@
 *.so.*
 *.dylib
 
+/S60can/Release/*
+
 # Executables
 *.exe
 *.out

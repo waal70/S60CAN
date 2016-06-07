@@ -1,3 +1,4 @@
+char foo;  // for the sake of Arduino header parsing anti-automagic. Remove and prepare yourself for headache.
 /* S60 CAN  - Arduino firmware - version 0.5 alpha
 **
 ** Copyright (c) 2015 André de Waal
@@ -37,20 +38,8 @@
 //
 // * Way-over-yonder: make the list of sensors to read dynamic
 
-//#define DEBUG_MAIN
-//#define DEBUG_FREE_MEM
-
-// This enables the sending of periodic keep-alive messages
-// Also pretty useful for loopback testing
-#define KEEPALIVE
-#define LOOPBACKMODE   1
-// Set this to 1 if the target is a non-EID S80
-#define TARGETS60      0
-
-// This enables using the apparatus as an indepent DPF temp monitor 
-//  the original goal for making this :)
-#define DPFMONITOR
-
+#include "compilecontrol.h"
+#include "s60can.h"
 #include <TimerOne.h>
 #include <Wire.h>
 #include <Canbus.h>
@@ -63,38 +52,25 @@
 #include <mcp2515_defs.h> 
 #include <LiquidCrystal_I2C.h>
 
-#ifdef TARGETS60
-	#include "s60can_msgs.h"
+#if TARGETS60==1
+	#include <s60can_msgs.h>
+  //#error S60CANMSGS
 #else
-	#include "s80can_msgs.h"
+	#include <s80can_msgs.h>
+  //#error S80CANMSGS
 #endif
 
 
 #include <SD.h>
   const int chipSelect = 9; //The CARD_SC pin on the sparkfun board
 
-#include "UsbCAN.h"
-
-char foo;  // for the sake of Arduino header parsing anti-automagic. Remove and prepare yourself for headache.
-
-#define HW_VER        0x01    // hardware version
-#define SW_VER        0x00    // software version
-#define SW_VER_MAJOR  0x05    // software major version
-#define SW_VER_MINOR  0x01    // software minor version
 #define MCP2551_STANDBY_PIN A1
 
 // Filter does not pass messages by default, since VIDA seems to crash at start if all CAN messages are transmitted to it. If you are not using VIDA but
 // for example CAN Hacker, you can uncomment this define or use Lawicell 'M' and 'm' commands to set acceptance register (set mask to 0x0 to pass all messages).
 // #define PASS_ALL_MSGS
-
-// This enables filtering according to my own settings. It uses hardware filtering and masking, and therefore is speedy
-#define PASS_S60CAN
-
-// This enables the use of a LiquidCrystal_I2C LCD attached to the Arduino
-#define LCD
-
 // initialize the library with the numbers of the interface pins
-#ifdef LCD
+#ifdef LCDATTACHED
   //GND, VCC to GND and 5V
   //SDA to A4
   //SCL to A5
@@ -104,8 +80,10 @@ char foo;  // for the sake of Arduino header parsing anti-automagic. Remove and 
 
 // This enables using this as a passthru-device according to Lawicel standards
 // In effect, dispatching received messages to the USB
-#define USBCAN    // we are using CANUSB (Lawicel) / CAN232 format by default now
-
+//#define USBCAN    // we are using CANUSB (Lawicel) / CAN232 format by default now
+#ifdef USBCAN
+  #include "UsbCAN.h"
+#endif
     
   char msgFromHost[32]; // message that is being read from host
   int msgLen=0;
@@ -128,7 +106,7 @@ static int uart_putchar (char c, FILE *stream)
 
 void display_operation_mode() {
 
-  #ifdef LCD
+  #ifdef LCDATTACHED
     lcd.clear();
     lcd.setCursor(0,0);
     lcd.print(F("mode: "));
@@ -203,130 +181,45 @@ void write_DPF_msg_on_LCD (tCAN *message) {
  lcd.setCursor(0,0);
  lcd.print(F("                "));
  lcd.setCursor(0,0);
-  char temp[7]; 
-  char msg[16];
-  uint16_t value;
-  // CD 11 E6 01 96 0B D4 00
-  // This gets the 6th and 7th element from the DPF response message (tested through isDPFMessage())
-  // And calculates the temperature as follows:
-  // Decimal value is temperature in tenths of degrees Kelvin. Therefore:
-  // decimal value /10 - 273.15 = degrees celsius:
-  value = (uint16_t)(((message->data[5] << 8) | (message->data[6])) & 0xFFFF);
-
-  // Check for a valid temperature, between 0 and 2000 degrees celsius
-  // Character buffers need to be at least 1 character longer than the number of characters you are writing to them
-  // As we are writing 0.1 to maximum 2000.0 this means a buffer of 6+1
-  if (((double)value > 2732) && ((double)value < 22732) )
-  {
-    dtostrf((value-2731.5)/10,4,1,temp);
-    //337 is the degree symbol
-    sprintf(msg, "DPF: %s \337C", temp);
-    lcd.print(msg);
-  }
-  else
-    lcd.print(F("DPF: ERR \337C"));
-
-  lcd.setCursor(16,3);
-  lcd.print(globalMessageCounter);
-
-  globalMessageCounter++;
+ char msg[16];
+ prepDPFMessage(message, msg);
+ lcd.print(msg);
+ lcd.setCursor(16,3);
+ lcd.print(globalMessageCounter);
+ globalMessageCounter++;
   
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void write_EGR_msg_on_LCD (tCAN *message) {
-
+ char msg[16];
   //pre-condition isEGRMessage is true (1)
  //lcd.clearLine(0);
  //lcd.backlight();
  lcd.setCursor(0,1);
  lcd.print(F("          ")); //we do this because initialization leaves characters on line 2
  lcd.setCursor(0,1);
-  char temp[6]; 
-  char msg[16];
-  float factor = 0.01220703125;
-  uint16_t value;
-  // CD 11 E6 01 96 0B D4 00
-  // This gets the 6th and 7th element from the EGR response message (tested through isEGRMessage())
-  // And calculates the percentage as follows:
-  // Decimal value is 8192 (hex: 2000)-based, meaning 8192 corresponds with 100%
-  // Lower value is XXX, so the factor becomes 0.0122 (more or less)
-  value = (uint16_t)(((message->data[5] << 8) | (message->data[6])) & 0xFFFF);
-
-  // Check for a valid value, between 0 and 8193 decimal
-  // Character buffers need to be at least 1 character longer than the number of characters you are writing to them
-  // As we are writing 0.1 to maximum 100.0 this means a buffer of 5+1
-  if (((double)value > 0) && ((double)value < 8193) )
-  {
-    dtostrf((double)value*factor,3,1,temp);
-    //337 is the degree symbol
-    sprintf(msg, "EGR: %s%%", temp);
-    lcd.print(msg);
-  }
-  else
-    lcd.print(F("EGR: ERR %"));  
+  prepEGRMessage(message, msg);
+  lcd.print(msg);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void write_OIL_msg_on_LCD (tCAN *message) {
-
+void write_OIL_msg_on_LCD (tCAN * message) {
+ char msg[16];
   //pre-condition isOILMessage is true (1)
   lcd.setCursor(0,2);
-  char temp[6]; 
-  char msg[16];
-  uint16_t value;
-  // CD 11 E6 00 ED 0E 3C 00
-  // This gets the 6th and 7th element from the OIL response message (tested through isOILMessage())
-  // 0E3C (3644) = 91.66, 0E39 (3641) = 90.96
-  // And calculates the temperature as follows:
-  // Decimal value is temperature in tenths of degrees Kelvin. Therefore:
-  // decimal value / 10 - 273.15 = degrees celsius:
-  value = (uint16_t)(((message->data[5] << 8) | (message->data[6])) & 0xFFFF);
-
-  // Check for a valid temperature, between 0 and 999.9 degrees celsius
-  // Character buffers need to be at least 1 character longer than the number of characters you are writing to them
-  // As we are writing 0.1 to maximum 999.9 this means a buffer of 5+1
-  if (((double)value > 0) && ((double)value < 3732) )
-  {
-    dtostrf((value-2731.5)/10,3,1,temp);
-    //337 is the degree symbol
-    sprintf(msg, "OIL: %s \337C", temp);
-    lcd.print(msg);
-  }
-  else
-    lcd.print(F("OIL: ERR \337C"));  
+  prepOILMessage(message,msg);
+  lcd.print(msg);
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void write_BOOST_msg_on_LCD (tCAN *message) {
-
-  lcd.setCursor(0,3);
-  char temp[5]; 
   char msg[16];
-  float factor = 0.001;
-  uint16_t value;
-  // CD 11 E6 01 76 04 0D 00
-  // 040D (1037) = 1037 hPa, 0409 (1033) = 1033 hPa
-  // This gets the 6th and 7th element from the BOOST response message (tested through isBOOSTMessage())
-  // And calculates the boost pressure as follows:
-  // Decimal value is boost pressure in hectoPascals (1hPa = 1/1000 bar)
-  value = (uint16_t)(((message->data[5] << 8) | (message->data[6])) & 0xFFFF);
-
-  // Check for a valid pressure, between 0 and 4500 hPA
-  // Character buffers need to be at least 1 character longer than the number of characters you are writing to them
-  // As we are writing 1.00 to maximum 4.00 this means a buffer of 4+1
-  if (((double)value > 0) && ((double)value < 8193) )
-  {
-    dtostrf((double)value*factor,1,2,temp);
-    sprintf(msg, "TRB: %s bar", temp);
-    lcd.print(msg);
-  }
-  else
-    lcd.print(F("TRB: ERR bar"));  
+  lcd.setCursor(0,3);
+  prepBOOSTMessage(message, msg);
+  lcd.print(msg);
 }
-
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-#ifdef LCD
+#ifdef LCDATTACHED
 void show_CAN_msg_on_LCD( tCAN * message, bool recv )
 {
       char msg[32];
@@ -363,7 +256,7 @@ void show_CAN_msg_on_LCD( tCAN * message, bool recv )
 
 int send_CAN_msg(tCAN * msg)  {
   int ret = 0;   
-  #ifdef LCD
+  #ifdef LCDATTACHED
     //disable this for monitoring mode
     #ifndef DPFMONITOR
       write_DPF_msg_on_LCD(msg, false);
@@ -388,7 +281,7 @@ int send_CAN_msg(tCAN * msg)  {
 	  printf(data);
     }
   if (ret==0) {
-    #ifdef LCD
+    #ifdef LCDATTACHED
       lcd.setCursor(0,0);
       lcd.print(F("ovfl"));  // overflow
     #endif
@@ -430,7 +323,7 @@ void checkRam() {
 // returns 1 if success, 0 if failed
 int init_module( unsigned long baudrate )
 {
-  #ifdef LCD
+  #ifdef LCDATTACHED
     lcd.setCursor(0,1);
     lcd.print(F("init: "));
     char txt[16];
@@ -441,7 +334,7 @@ int init_module( unsigned long baudrate )
   if(!(Canbus.init(baudrate)))
     {
     // initialization failed!
-    #ifdef LCD
+    #ifdef LCDATTACHED
       lcd.print(F("fail!"));
     #endif
     #ifdef DEBUG_MAIN
@@ -453,7 +346,7 @@ int init_module( unsigned long baudrate )
     return 0;
 
   
-  #ifdef LCD
+  #ifdef LCDATTACHED
     lcd.setCursor(11,1);
     lcd.print(F(" ok"));
   #endif
@@ -496,7 +389,7 @@ void setFilter()
     mcp2515_setHWFilter(masks,2, filters, 6);
   delay(10);
  #else
-  uint16_t masks[2] = {0x0000, 0x0000};
+  uint16_t masks[2] = {0xffff, 0xffff};
   uint16_t filters[6] = {0x07e0, 0x07e8, 0x0000, 0x0000, 0x0000, 0x0000};
   delay(10);
     mcp2515_setHWFilterS80(masks,2, filters, 6);
@@ -519,7 +412,7 @@ void setup() {
   // The uart is the standard output device STDOUT.
   stdout = &uartout ;
 
-  #ifdef LCD
+  #ifdef LCDATTACHED
     lcd.begin(20, 4);
     lcd.clear();
   #endif
@@ -585,7 +478,8 @@ void handle_CAN_rx() {
       uint8_t status = mcp2515_get_message(  &message );
       if (status)  
         {
-          #ifdef LCD
+    	  printf("Message received \n");
+          #ifdef LCDATTACHED
             #ifndef DPFMONITOR
               show_CAN_msg_on_LCD(&message,true);
             #endif
@@ -604,14 +498,15 @@ void handle_CAN_rx() {
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+#ifdef USBCAN
 int handle_cmd(char * cmd)
 {
   return UsbCAN::handle_host_message(cmd);
 }
+#endif
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+#ifdef USBCAN
 void handle_host_messages()
 {
  int receivedByte;
@@ -619,7 +514,7 @@ void handle_host_messages()
 	receivedByte = Serial.read();
           if  (receivedByte =='\r')
             {
-              #ifdef LCD
+              #ifdef LCDATTACHED
                 lcd.clear();
                 lcd.setCursor(0, 0);
                 lcd.print(msgFromHost);
@@ -628,7 +523,7 @@ void handle_host_messages()
               #endif
               if (handle_cmd(msgFromHost)==0)
                 {
-                  #ifdef LCD
+                  #ifdef LCDATTACHED
                     lcd.clear();
                     lcd.setCursor(0, 0);
                     lcd.print(F("err"));
@@ -654,12 +549,14 @@ void handle_host_messages()
               }
         } // while serial available
 }
-
+#endif
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void loop() {
 
+#ifdef USBCAN
   handle_host_messages();
+#endif
   handle_CAN_rx();
 
   checksend_CAN_msgs();

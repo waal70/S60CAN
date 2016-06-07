@@ -17,13 +17,14 @@
 ** License along with this program; if not, <http://www.gnu.org/licenses/>.
 **
 */
-#include <mcp2515.h> 
 
 /*#define MODE_NORMAL 0
 #define MODE_SLEEP 1
 #define MODE_LOOPBACK 2
 #define MODE_LISTEN 3
 #define MODE_CONFIG 4*/
+
+#include <mcp2515.h>
 
 #define HW_VER        0x01		// hardware version
 #define SW_VER        0x00		// software version
