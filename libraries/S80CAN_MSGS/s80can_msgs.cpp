@@ -35,7 +35,7 @@
 */
 #include <Arduino.h>
 #include <mcp2515.h>
-#include "../../s60can/s60can.h"
+#include "s60can.h"
 
 #define KEEPALIVE_MSG 0
 #define DPF_MSG 1 //DPF = KVL for S80

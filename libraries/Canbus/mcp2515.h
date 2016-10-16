@@ -24,7 +24,7 @@
 
 #include "mcp2515_defs.h"
 #include "global.h"
-#include "../../s60can/compilecontrol.h"
+#include "compilecontrol.h"
 #ifdef __cplusplus
 
 extern "C"
