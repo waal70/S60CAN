@@ -46,6 +46,7 @@
 //  the original goal for making this :)
 #define DPFMONITOR
 
+#include <Arduino.h>
 #include <TimerOne.h>
 #include <Wire.h>
 #include <Canbus.h>
@@ -87,7 +88,7 @@ char foo;  // for the sake of Arduino header parsing anti-automagic. Remove and 
   //GND, VCC to GND and 5V
   //SDA to A4
   //SCL to A5
-  LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);
+  LiquidCrystal_I2C lcd(0x27, 20, 4); // 0x27 is the I2C address, 20 columns, 4 rows
   int globalMessageCounter = 0;
 #endif
 

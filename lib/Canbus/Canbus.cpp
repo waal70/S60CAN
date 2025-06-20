@@ -64,6 +64,7 @@ char CanbusClass::init(unsigned long speed) {
 // returns 1 on succes, 0 on failure
 char CanbusClass::setMode(unsigned int mode) {
 	mcp2515_setCANCTRL_Mode((uint8_t)mode);
+	return 1; // Indicate success
 }
 ///////////////////////////////////////////////////////////////////////////////////
 char CanbusClass::getMode() {
@@ -74,14 +75,15 @@ char CanbusClass::getMode() {
 char* CanbusClass::getDisplayFilter() {
 	//3 because I am returning an asterisk and one null character
 	char* result = (char*) malloc(2);
-    //WARNING: this only works if we are setting filter mode to either
-    // 11 or 00. This will incorrectly interpret intermediate settings!
-    uint8_t fltr = mcp2515_read_register(RXB0CTRL);
-    if (!((fltr & 0x60) == 0x60))
-      result = "*";
+	//WARNING: this only works if we are setting filter mode to either
+	// 11 or 00. This will incorrectly interpret intermediate settings!
+	uint8_t fltr = mcp2515_read_register(RXB0CTRL);
+	if (!((fltr & 0x60) == 0x60))
+	  result[0] = '*';
+	result[1] = '\0';
 	return result;
-        //one of the two bits is zero. Because of the above
-        // assumption, both bits are zero. Therefore, filter is set.
+		//one of the two bits is zero. Because of the above
+		// assumption, both bits are zero. Therefore, filter is set.
 }
 ///////////////////////////////////////////////////////////////////////////////////
 // returns 1 on succes, 0 on failure
