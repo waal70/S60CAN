@@ -144,6 +144,10 @@ void mcp2515_reset(void)
 
 }
 // -------------------------------------------------------------------------
+#define MCP_SPEED_125KBPS 1
+#define MCP_SPEED_250KBPS 2
+#define MCP_SPEED_500KBPS 3
+
 uint8_t mcp2515_init(uint8_t speed)
 {
 	
@@ -159,17 +163,17 @@ uint8_t mcp2515_init(uint8_t speed)
 	
 	switch (speed)
 	{
-		case (125000): //7=125 kbps
+		case MCP_SPEED_125KBPS: //7=125 kbps
 			cfg1 = MCP_16MHz_125kBPS_CFG1;
 			cfg2 = MCP_16MHz_125kBPS_CFG2;
 			cfg3 = MCP_16MHz_125kBPS_CFG3;
 			break;
-		case (250000):
+		case MCP_SPEED_250KBPS:
 			cfg1 = MCP_16MHz_250kBPS_CFG1;
 			cfg2 = MCP_16MHz_250kBPS_CFG2;
 			cfg3 = MCP_16MHz_250kBPS_CFG3;
 			break;
-		case (500000):
+		case MCP_SPEED_500KBPS:
 			cfg1 = MCP_16MHz_500kBPS_CFG1;
 			cfg2 = MCP_16MHz_500kBPS_CFG2;
 			cfg3 = MCP_16MHz_500kBPS_CFG3;
@@ -247,6 +251,8 @@ uint8_t split_canbus_id(uint8_t requestedPart, uint32_t canbus_id) {
 			}
 		break;
 	}
+	// Default return value if no case matches
+	return 0;
 }
 // ----------------------------------------------------------------------------
 // Utility to set the mask and filter in the appropriate registers 
